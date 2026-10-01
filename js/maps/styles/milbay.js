@@ -9,11 +9,11 @@
 //   hazard_ring                -> a yellow/black band round some hexes
 // ingress zones get hatch aprons; "obstruction" terrain outside the play area is ship bulkhead.
 
-import { NpRandom, PyRandom } from "../../rng.js";
-import { newImage, Draw, alphaComposite, paste, gaussianBlur, rankFilter, u8 } from "../../raster.js";
-import { centre, hexPoints, geometry, arange, hexesBox, imageSize, connectedParts } from "../geometry.js";
+import { NpRandom, PyRandom } from "../../rng.js?v=0f282507bd";
+import { newImage, Draw, alphaComposite, paste, gaussianBlur, rankFilter, u8 } from "../../raster.js?v=0f282507bd";
+import { centre, hexPoints, geometry, arange, hexesBox, imageSize, connectedParts } from "../geometry.js?v=0f282507bd";
 import { noise, font, drawAllZones, decalBlast, decalTracks, decalHazardRing, ZONE_TINT, DEFAULT_TINT, ZONE_SETTINGS,
-  withDefaults, keeper, extras } from "../common.js";
+  withDefaults, keeper, extras } from "../common.js?v=0f282507bd";
 
 const F = Math.fround;
 const DECK = [60, 58, 63];

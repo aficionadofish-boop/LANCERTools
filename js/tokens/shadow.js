@@ -5,7 +5,7 @@
 // at the foot the shadow touches the object, and the tops throw the long part. Longer shadows are lighter,
 // and the shadow fades out before the canvas edge instead of being cut. Used by the Synthetik sets.
 
-import { newImage, alphaCompositeAt, gaussianBlur } from "../raster.js";
+import { newImage, alphaCompositeAt, gaussianBlur } from "../raster.js?v=0f282507bd";
 
 export function groundShadow(obj, cell, { ax = 0.34, ay = 0.16, blur = 0.03, strength = 0.55 } = {}) {
   const { w, h } = obj, foot = new Int32Array(w).fill(-1);

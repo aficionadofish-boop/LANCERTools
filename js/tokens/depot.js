@@ -9,14 +9,14 @@
 // height map, lit from the top-left and shown as seen from the south, with paint that can change with
 // height up a wall (bands, stencils). Hard boxes are drawn flat.
 
-import { PyRandom } from "../rng.js";
-import { newImage, Draw, alphaComposite, alphaCompositeAt, paste } from "../raster.js";
-import { geometry } from "../maps/geometry.js";
-import { tokenCanvas, grime, size2Footprint } from "./kit.js";
-import { groundShadow } from "./shadow.js";
+import { PyRandom } from "../rng.js?v=0f282507bd";
+import { newImage, Draw, alphaComposite, alphaCompositeAt, paste } from "../raster.js?v=0f282507bd";
+import { geometry } from "../maps/geometry.js?v=0f282507bd";
+import { tokenCanvas, grime, size2Footprint } from "./kit.js?v=0f282507bd";
+import { groundShadow } from "./shadow.js?v=0f282507bd";
 
 const withShadow = (obj, cell) => groundShadow(obj, cell);                      // stood on the floor (shadow.js), not the kit's offset copy
-import { fblur } from "./training.js";
+import { fblur } from "./training.js?v=0f282507bd";
 
 const T = Math.trunc;
 export const sh = (c, k) => c.map((v) => Math.max(0, Math.min(255, T(v * k))));

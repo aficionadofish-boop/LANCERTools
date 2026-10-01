@@ -2,12 +2,12 @@
 // get the Roll20 base map. Drawing happens in the render worker; this page keeps an overlay of what
 // was painted, so edits show at once while the map redraws underneath.
 
-import { MapModel, key, parse, zoneKind } from "./mapmodel.js";
-import { Renderer } from "./renderer.js";
-import * as cache from "./rendercache.js";
-import { STYLES } from "../maps/render.js";
-import { CELL, SS, geometry, centre, hexPoints, imageSize, colLetter, zoneEdges } from "../maps/geometry.js";
-import { ZONE_TINT, DEFAULT_TINT } from "../maps/common.js";
+import { MapModel, key, parse, zoneKind } from "./mapmodel.js?v=0f282507bd";
+import { Renderer } from "./renderer.js?v=0f282507bd";
+import * as cache from "./rendercache.js?v=0f282507bd";
+import { STYLES } from "../maps/render.js?v=0f282507bd";
+import { CELL, SS, geometry, centre, hexPoints, imageSize, colLetter, zoneEdges } from "../maps/geometry.js?v=0f282507bd";
+import { ZONE_TINT, DEFAULT_TINT } from "../maps/common.js?v=0f282507bd";
 
 const $ = (id) => document.getElementById(id);
 const STORE = "lancertools.mapmaker";
