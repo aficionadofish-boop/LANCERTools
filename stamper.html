@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Stamper · LANCERTools</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/topbar.css">
+<!--
+  Token Stamper: turns any art into a hex token that fits this project's Roll20 grid.
+  Same geometry as _backstage/tools/roll20_maps.py and the terrain kit: Roll20 Hex (V), regular pointy-top
+  hexes 70 px wide; Size 1 = one hex, Size 2 = three hexes (one on top, two below), Size 3 = seven.
+  The saved file is drawn at 2x for sharpness and named <name>_size<N>_<W>x<H>.png, where W x H is
+  the size to set in Roll20 (the !tokensize button reads it from the name).
+  Runs locally: open this file in Firefox. Nothing is uploaded anywhere.
+-->
+<style>
+  /* LANCERTools look (5etools night mode): see css/site.css */
+  :root { --bg: #1c1c1c; --panel: #222; --text: #bbb; --muted: #8f8f8f; --accent: #1e90ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.42857 Arial, sans-serif; }
+  main { display: grid; grid-template-columns: 300px 1fr; gap: 14px; padding: 12px 15px; margin-top: 6px; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+  aside { background: var(--panel); border: 1px solid #555; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+  h1 { font: 700 19px/1.2 "Barlow Condensed", "Arial Narrow", Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.03em;
+       margin: 0; color: #d29a38; border-bottom: 1px solid #d29a38; }
+  label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+  input, select, button { font: inherit; color: var(--text); background: #222; border: 1px solid #555; border-radius: 3px; padding: 5px 10px; }
+  button:hover { background: #363636; color: #d0d0d0; }
+  input[type=color] { padding: 2px; height: 34px; }
+  input[type=range] { padding: 0; min-width: 0; width: 100%; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  button { cursor: pointer; }
+  button.primary { background: #427442; color: #eee; border-color: #5a915a; }            /* the page's main action */
+  button.primary:hover { background: #4f8a4f; }
+  .sizes button.on { border-color: #d29a38; color: #1c1c1c; background: #d29a38; }       /* selection: gold */
+  input[type=range], input[type=checkbox] { accent-color: #d29a38; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .stage { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+           background: #141414; border: 1px solid #555; padding: 16px; }
+  #view { background: repeating-conic-gradient(#2b2b2b 0 25%, #232323 0 50%) 0 0 / 20px 20px; cursor: grab; max-width: 100%; }
+  #view.drag { cursor: grabbing; }
+  #drop input { max-width: 100%; margin-top: 6px; }
+  #drop { border: 2px dashed #555; padding: 18px; text-align: center; color: var(--muted); }
+  #drop.over { border-color: var(--accent); color: var(--accent); }
+  .out { font-family: Consolas, "Courier New", monospace; font-size: 12px; color: #7db6e8; word-break: break-all; }
+</style>
+</head>
+<body>
+<header class="topbar" data-page="stamper" data-title="Token Stamper"
+  data-tagline="Drop art on the left, drag it to frame, scroll to zoom, then save the token."></header>
+<script type="module" src="js/ui/topbar.js"></script>
+<main>
+  <aside>
+    <h1>Art</h1>
+    <div id="drop">Drop art here, or<br><input type="file" id="file" accept="image/*"></div>
+    <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="ink"> Ink style</label>
+    <div class="row">
+      <label>Lines <input type="range" id="inkLines" min="0.4" max="1.6" step="0.05" value="1"></label>
+      <label>Shade <input type="range" id="inkShade" min="0.4" max="1.6" step="0.05" value="1"></label>
+    </div>
+    <div class="hint" id="inkInfo">Ink style turns any art into black-and-white line art (like the BattleTech tokens), so mixed sources match.</div>
+    <label>Name <input id="name" value="token"></label>
+    <div>
+      <div class="hint" style="margin-bottom:4px">SIZE</div>
+      <div class="row sizes">
+        <button data-size="0.5">½</button><button data-size="1" class="on">1</button><button data-size="2">2</button><button data-size="3">3</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>Border <input type="color" id="border" value="#c21f25"></label>
+      <label>Width <input type="number" id="bw" value="4" min="0" max="20"></label>
+    </div>
+    <div class="row">
+      <label>Background <input type="color" id="bg" value="#ffffff"></label>
+      <label>None <input type="checkbox" id="nobg"></label>
+    </div>
+    <label>Zoom <input type="range" id="zoom" min="0.1" max="4" step="0.01" value="1"></label>
+    <div class="row">
+      <button id="fit">Fit</button><button id="fill">Fill</button><button id="flip">Flip ↔</button>
+    </div>
+    <div class="hint">Drag the art to move it, scroll to zoom. Red = enemy, blue (#2f6fd6) = ally.</div>
+    <button class="primary" id="save">Save token</button>
+    <div class="out" id="out"></div>
+    <div class="hint">In Roll20: select it and press your <b>!tokensize</b> button. The size is in the file name.</div>
+  </aside>
+  <section class="stage">
+    <canvas id="view"></canvas>
+    <div class="hint" id="info"></div>
+  </section>
+</main>
+<script>
+(function () {
+  "use strict";
+  // --- the kit's geometry (_backstage/tools/roll20_maps.py): regular pointy-top hexes, 70 px wide ---
+  var CELL = 70, SS = 2;                        // Roll20 cell width; the saved file is drawn at 2x
+  var SX = CELL, SY = CELL * Math.sqrt(3) / 2;  // step along a row / row to row
+  var HW = SX / 2, QH = SY / 3;                 // half hex width / quarter hex height
+  // Size 1/2 still occupies one hex; its token is a 75% hex centred in it, with a dashed border.
+  var HALF = 0.75;
+  function sf(sz) { return sz === 0.5 ? HALF : 1; }
+  var FOOTPRINTS = {
+    0.5: [[0, 0]],
+    1: [[0, 0]],
+    2: [[0, 0], [-HW, SY], [HW, SY]],
+    3: [[0, 0], [SX, 0], [-SX, 0], [HW, SY], [-HW, SY], [HW, -SY], [-HW, -SY]]
+  };
+  function hexPts(cx, cy, k) {
+    return [[0, -2 * QH], [HW, -QH], [HW, QH], [0, 2 * QH], [-HW, QH], [-HW, -QH]]
+      .map(function (p) { return [cx + p[0] * k, cy + p[1] * k]; });
+  }
+  // Canvas size and hex centres (at scale k) exactly as token_canvas() in roll20_maps.py.
+  // Roll20 snaps a token by putting the centre of its image on a hex centre, so the canvas is
+  // symmetric around the first (anchor) hex: a Size 2 token gets transparent space above its top
+  // hex (140 x 202), and then snapping puts the three hexes exactly on the grid.
+  function layout(size, k) {
+    var fp = FOOTPRINTS[size], ax = fp[0][0], ay = fp[0][1];
+    var xs = fp.map(function (p) { return p[0]; }), ys = fp.map(function (p) { return p[1]; });
+    var ex = Math.max(ax - (Math.min.apply(null, xs) - HW), Math.max.apply(null, xs) + HW - ax);
+    var ey = Math.max(ay - (Math.min.apply(null, ys) - 2 * QH), Math.max.apply(null, ys) + 2 * QH - ay);
+    var left = ax - ex, top = ay - ey;
+    var w = Math.ceil(2 * ex * k);
+    var h = Math.ceil(2 * ey * k);
+    var centres = fp.map(function (p) { return [(p[0] - left) * k, (p[1] - top) * k]; });
+    // the footprint's own box (the art is placed and fitted on this, not on the padded canvas)
+    var fx0 = (Math.min.apply(null, xs) - HW - left) * k, fx1 = (Math.max.apply(null, xs) + HW - left) * k;
+    var fy0 = (Math.min.apply(null, ys) - 2 * QH - top) * k, fy1 = (Math.max.apply(null, ys) + 2 * QH - top) * k;
+    return { w: w, h: h, centres: centres, fx: (fx0 + fx1) / 2, fy: (fy0 + fy1) / 2, fw: fx1 - fx0, fh: fy1 - fy0 };
+  }
+  function outerEdges(centres, k) {                   // edges not shared with another hex
+    var edges = [];
+    centres.forEach(function (c) {
+      var pts = hexPts(c[0], c[1], k);
+      for (var i = 0; i < 6; i++) {
+        var a = pts[i], b = pts[(i + 1) % 6];
+        var nx = a[0] + b[0] - c[0], ny = a[1] + b[1] - c[1];
+        var shared = centres.some(function (o) { return Math.hypot(o[0] - nx, o[1] - ny) < 2 * k; });
+        if (!shared) edges.push([a, b]);
+      }
+    });
+    return edges;
+  }
+
+  // Roll20 size in the file name, rounded exactly as roll20_maps.py does (Python rounds .5 to even),
+  // so a stamped Size 3 token and the kit's drop pod both say 210x202.
+  function pyRound(x) {
+    var r = Math.round(x);
+    if (Math.abs(x - Math.trunc(x)) === 0.5 && r % 2 !== 0) r -= 1;
+    return r;
+  }
+  function roll20Size(sz) { var L = layout(sz, SS * sf(sz)); return [pyRound(L.w / SS), pyRound(L.h / SS)]; }
+
+  // --- ink style: a port of _backstage/tools/ink_convert.py (same steps, same numbers) ---
+  // flatten onto white, normalise the subject's tones, XDoG lines, hatching for mid shadow,
+  // cross-hatching for dark, solid black only for the deepest; a heavier outer contour.
+  var INK_SIZE = 900;                                 // work size: the longest side, as the Python default
+  function blurred(gray, w, h, r) {                   // Gaussian blur via the canvas (CSS blur: r = std dev)
+    var a = document.createElement("canvas"); a.width = w; a.height = h;
+    var ax = a.getContext("2d"), id = ax.createImageData(w, h);
+    for (var i = 0; i < w * h; i++) { var v = gray[i]; id.data[4 * i] = id.data[4 * i + 1] = id.data[4 * i + 2] = v; id.data[4 * i + 3] = 255; }
+    ax.putImageData(id, 0, 0);
+    var b = document.createElement("canvas"); b.width = w; b.height = h;
+    var bx = b.getContext("2d");
+    bx.fillStyle = "#fff"; bx.fillRect(0, 0, w, h);        // outside the image reads as paper, not black
+    bx.filter = "blur(" + r + "px)"; bx.drawImage(a, 0, 0);
+    var d = bx.getImageData(0, 0, w, h).data, out = new Float32Array(w * h);
+    for (var j = 0; j < w * h; j++) out[j] = d[4 * j];
+    return out;
+  }
+  function median3(src, w, h) {
+    var out = new Float32Array(w * h), v = new Array(9);
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+      var n = 0;
+      for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+        var xx = Math.min(w - 1, Math.max(0, x + dx)), yy = Math.min(h - 1, Math.max(0, y + dy));
+        v[n++] = src[yy * w + xx];
+      }
+      v.sort(function (p, q) { return p - q; });
+      out[y * w + x] = v[4];
+    }
+    return out;
+  }
+  function dilate(mask, w, h, r) {                    // square max filter, separable (= PIL MaxFilter)
+    var tmp = new Uint8Array(w * h), out = new Uint8Array(w * h), x, y, k;
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+      var m = 0; for (k = -r; k <= r && !m; k++) { var xx = x + k; if (xx >= 0 && xx < w && mask[y * w + xx]) m = 1; }
+      tmp[y * w + x] = m;
+    }
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+      var n = 0; for (k = -r; k <= r && !n; k++) { var yy = y + k; if (yy >= 0 && yy < h && tmp[yy * w + x]) n = 1; }
+      out[y * w + x] = n;
+    }
+    return out;
+  }
+  function inkify(src, lines, shade) {
+    var sw = src.naturalWidth, sh = src.naturalHeight, s = INK_SIZE / Math.max(sw, sh);
+    var w = Math.round(sw * s), h = Math.round(sh * s), size = Math.max(w, h), N = w * h, i;
+    var c = document.createElement("canvas"); c.width = w; c.height = h;
+    var cx = c.getContext("2d"); cx.drawImage(src, 0, 0, w, h);
+    var px = cx.getImageData(0, 0, w, h).data;
+    var lum = new Float32Array(N), alpha = new Float32Array(N), subject = new Uint8Array(N), hasBg = false;
+    for (i = 0; i < N; i++) {
+      var a = px[4 * i + 3] / 255;
+      var l = 0.299 * px[4 * i] + 0.587 * px[4 * i + 1] + 0.114 * px[4 * i + 2];
+      lum[i] = l * a + 255 * (1 - a); alpha[i] = a; subject[i] = a > 0.5 ? 1 : 0; if (a < 0.5) hasBg = true;
+    }
+    // normalise: the subject's 3rd..97th percentile to the full range
+    var vals = []; for (i = 0; i < N; i += 3) if (subject[i]) vals.push(lum[i]);
+    if (vals.length < 100) for (i = 0; i < N; i += 3) vals.push(lum[i]);
+    vals.sort(function (p, q) { return p - q; });
+    var lo = vals[Math.floor(vals.length * 0.03)], hi = vals[Math.floor(vals.length * 0.97)], span = Math.max(1, hi - lo);
+    for (i = 0; i < N; i++) lum[i] = Math.min(255, Math.max(0, (lum[i] - lo) / span * 255));
+    var flat = median3(lum, w, h);
+    var smooth = blurred(flat, w, h, size / 450);
+    var sigma = size / 900 * 1.1, g1 = blurred(flat, w, h, sigma), g2 = blurred(flat, w, h, sigma * 1.6);
+    var tau = 0.985, eps = -4 / (lines * lines), phi = 12, cut = 0.5;   // Lines = edge sensitivity
+    var deep = 22 * shade, dark = 60 * shade, mid = 115 * shade;
+    var sp = Math.max(5, Math.floor(size / 130)), wd = Math.max(1, Math.floor(size / 700));
+    var ink = new Uint8Array(N);
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+      i = y * w + x;
+      var dd = g1[i] - tau * g2[i];
+      var e = dd >= eps ? 1 : 1 + Math.tanh(phi * (dd - eps) / 255 * 20);
+      var on = e < cut;
+      if (subject[i]) {
+        var t = smooth[i], h1 = ((x + y) % sp) < wd, h2 = (((x - y) % sp) + sp) % sp < wd;
+        if (t < deep) on = true;
+        else if (t < dark && (h1 || h2)) on = true;
+        else if (t < mid && h1) on = true;
+      }
+      ink[i] = on ? 1 : 0;
+    }
+    var aOut = alpha;
+    if (hasBg) {                                         // the heavier outer contour
+      var grow = Math.max(2, Math.floor(size / 300)), big = dilate(subject, w, h, grow);
+      aOut = new Float32Array(N);
+      for (i = 0; i < N; i++) { if (big[i] && !subject[i]) ink[i] = 1; aOut[i] = big[i]; }
+    }
+    var clean = median3(ink, w, h);                      // drop lone specks
+    var oc = document.createElement("canvas"); oc.width = w; oc.height = h;
+    var ox2 = oc.getContext("2d"), od = ox2.createImageData(w, h);
+    for (i = 0; i < N; i++) {
+      var v = clean[i] >= 0.5 ? 0 : 255;
+      od.data[4 * i] = od.data[4 * i + 1] = od.data[4 * i + 2] = v;
+      od.data[4 * i + 3] = hasBg ? Math.round(aOut[i] * 255) : 255;
+    }
+    ox2.putImageData(od, 0, 0);
+    return oc;
+  }
+
+  // --- state ---
+  var $ = function (id) { return document.getElementById(id); };
+  var img = null, src = null, size = 1, zoom = 1, ox = 0, oy = 0, flip = false;
+  function natW(im) { return im.naturalWidth || im.width; }
+  function natH(im) { return im.naturalHeight || im.height; }
+  function applyInk() {                               // img = the art as drawn: the original, or its ink version
+    if (!src) return;
+    var before = img ? natW(img) : natW(src);
+    if ($("ink").checked) {
+      $("inkInfo").textContent = "Converting…";
+      setTimeout(function () {
+        var t0 = performance.now();
+        img = inkify(src, +$("inkLines").value, +$("inkShade").value);
+        zoom *= before / natW(img);                   // keep the art the same size on the token
+        $("zoom").value = zoom;
+        $("inkInfo").textContent = "Ink style on (" + Math.round(performance.now() - t0) + " ms). Lines: fewer ← → more. Shade: lighter ← → darker.";
+        render();
+      }, 20);
+    } else {
+      img = src;
+      zoom *= before / natW(img);
+      $("zoom").value = zoom;
+      $("inkInfo").textContent = "Ink style turns any art into black-and-white line art (like the BattleTech tokens), so mixed sources match.";
+      render();
+    }
+  }
+  var view = $("view"), vctx = view.getContext("2d");
+  var PREVIEW = 3;                                    // preview scale (px per Roll20 px)
+
+  function draw(ctx, k0) {
+    var k = k0 * sf(size);                            // geometry scale (smaller hex for Size 1/2)
+    var L = layout(size, k);
+    ctx.canvas.width = L.w; ctx.canvas.height = L.h;
+    ctx.clearRect(0, 0, L.w, L.h);
+    ctx.save();
+    ctx.beginPath();
+    L.centres.forEach(function (c) {
+      var p = hexPts(c[0], c[1], k);
+      ctx.moveTo(p[0][0], p[0][1]);
+      for (var i = 1; i < 6; i++) ctx.lineTo(p[i][0], p[i][1]);
+      ctx.closePath();
+    });
+    ctx.clip();
+    if (!$("nobg").checked) { ctx.fillStyle = $("bg").value; ctx.fillRect(0, 0, L.w, L.h); }
+    if (img) {
+      var s = zoom * k, iw = natW(img) * s, ih = natH(img) * s;
+      ctx.save();
+      ctx.translate(L.fx + ox * k, L.fy + oy * k);
+      if (flip) ctx.scale(-1, 1);
+      ctx.drawImage(img, -iw / 2, -ih / 2, iw, ih);
+      ctx.restore();
+    }
+    var bw = +$("bw").value;
+    if (bw > 0) {                                      // border inside the footprint (the clip halves it)
+      ctx.strokeStyle = $("border").value;
+      ctx.lineWidth = bw * 2 * k0;
+      ctx.lineCap = size === 0.5 ? "butt" : "round";
+      ctx.setLineDash(size === 0.5 ? [7 * k0, 5 * k0] : []);   // dashed = Size 1/2
+      outerEdges(L.centres, k).forEach(function (e) {
+        ctx.beginPath(); ctx.moveTo(e[0][0], e[0][1]); ctx.lineTo(e[1][0], e[1][1]); ctx.stroke();
+      });
+    }
+    ctx.restore();
+    return L;
+  }
+  function render() {
+    var L = draw(vctx, PREVIEW);
+    var rs = roll20Size(size), rw = rs[0], rh = rs[1];
+    $("info").textContent = "Size " + (size === 0.5 ? "½" : size) + " · Roll20 size " + rw + " × " + rh + " px · Hex (V), 70 px cells";
+  }
+  function fitZoom(cover) {
+    if (!img) return;
+    var L = layout(size, sf(size));
+    var zx = L.fw / natW(img), zy = L.fh / natH(img);
+    zoom = cover ? Math.max(zx, zy) : Math.min(zx, zy);
+    ox = 0; oy = 0;
+    $("zoom").value = zoom; $("zoom").max = Math.max(4, zoom * 4); $("zoom").min = Math.min(0.1, zoom / 4);
+    render();
+  }
+  function load(file) {
+    if (!file) return;
+    var url = URL.createObjectURL(file);
+    var im = new Image();
+    im.onload = function () {
+      src = im; img = im;
+      $("name").value = file.name.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9_-]+/g, "_").toLowerCase();
+      fitZoom(false);
+      if ($("ink").checked) applyInk();
+    };
+    im.src = url;
+  }
+
+  // --- controls ---
+  $("file").onchange = function (e) { load(e.target.files[0]); };
+  var drop = $("drop");
+  ["dragenter", "dragover"].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); });
+  });
+  document.addEventListener("drop", function (e) { if (e.dataTransfer.files.length) load(e.dataTransfer.files[0]); });
+  Array.prototype.forEach.call(document.querySelectorAll(".sizes button"), function (b) {
+    b.onclick = function () {
+      size = +b.dataset.size;
+      document.querySelectorAll(".sizes button").forEach(function (x) { x.classList.toggle("on", x === b); });
+      fitZoom(false);
+      render();
+    };
+  });
+  ["border", "bw", "bg", "nobg"].forEach(function (id) { $(id).oninput = render; });
+  $("ink").onchange = applyInk;
+  $("inkLines").onchange = $("inkShade").onchange = function () { if ($("ink").checked) applyInk(); };   // on release
+  $("zoom").oninput = function () { zoom = +$("zoom").value; render(); };
+  $("fit").onclick = function () { fitZoom(false); };
+  $("fill").onclick = function () { fitZoom(true); };
+  $("flip").onclick = function () { flip = !flip; render(); };
+  var drag = null;
+  view.onpointerdown = function (e) { drag = { x: e.clientX, y: e.clientY }; view.classList.add("drag"); view.setPointerCapture(e.pointerId); };
+  view.onpointermove = function (e) {
+    if (!drag) return;
+    ox += (e.clientX - drag.x) / PREVIEW; oy += (e.clientY - drag.y) / PREVIEW;
+    drag = { x: e.clientX, y: e.clientY };
+    render();
+  };
+  view.onpointerup = view.onpointercancel = function () { drag = null; view.classList.remove("drag"); };
+  view.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    zoom *= e.deltaY < 0 ? 1.06 : 1 / 1.06;
+    $("zoom").value = zoom;
+    render();
+  }, { passive: false });
+  $("save").onclick = function () {
+    var c = document.createElement("canvas");
+    var L = draw(c.getContext("2d"), SS);
+    var rs = roll20Size(size), rw = rs[0], rh = rs[1];
+    var name = ($("name").value || "token") + "_size" + (size === 0.5 ? "half" : size) + "_" + rw + "x" + rh + ".png";
+    c.toBlob(function (blob) {
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      $("out").textContent = "Saved " + name + " → set " + rw + " × " + rh + " in Roll20";
+    }, "image/png");
+    render();
+  };
+  render();
+})();
+</script>
+</body>
+</html>

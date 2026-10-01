@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Kit · LANCERTools</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/site.css">
+<style>
+  .kit { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(360px, 1fr) minmax(400px, 1.05fr); gap: 16px;
+    max-width: 1140px; width: 100%; margin: 12px auto 0; padding: 0 15px 12px; }
+  .listpane { display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--line); background: var(--panel); }
+  .filterbar { display: flex; border-bottom: 1px solid var(--line); }
+  .filterbar .lbl { padding: 5px 10px; border-right: 1px solid var(--line); color: var(--head); background: var(--panel-2); }
+  .filterbar input { flex: 1; border: 0; border-radius: 0; background: var(--panel); }
+  .filterbar .count { padding: 5px 10px; color: var(--muted); white-space: nowrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 3px; padding: 5px 6px; border-bottom: 1px solid var(--line); background: #262626; }
+  .listscroll { flex: 1; min-height: 0; overflow-y: auto; }
+  table.dense th.sorted::after { content: " ▲"; font-size: 10px; }
+  table.dense th.sorted.desc::after { content: " ▼"; }
+  .listfoot { display: flex; gap: 6px; align-items: center; padding: 6px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .detail { min-height: 0; overflow-y: auto; }
+  .preview { display: grid; place-items: center; min-height: 230px; margin: 6px 0 4px; }
+  .preview img { max-width: 100%; max-height: 420px; image-rendering: auto; }
+  .bg-dark .preview { background: #2e2f33; }
+  .bg-deck .preview { background: #3c3a3f; }
+  .bg-check .preview { background: repeating-conic-gradient(#35363a 0 25%, #2a2b2e 0 50%) 0 0 / 16px 16px; }
+  .bg-light .preview { background: #c9c7c2; }
+  .prevbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .variants { display: flex; flex-wrap: wrap; gap: 3px; }
+  .sb-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .notes { margin: 6px 0 0; }
+  @media (max-width: 860px) { .kit { grid-template-columns: 1fr; } .listscroll { max-height: 50vh; } }
+</style>
+</head>
+<body class="app">
+<header class="topbar" data-page="tokens" data-title="Token Kit"
+  data-tagline="Filter on the left, click a token to see it on the right. Press <kbd>J</kbd>/<kbd>K</kbd> to navigate."></header>
+<main class="kit">
+  <section class="listpane">
+    <div class="filterbar"><span class="lbl">Filter</span><input type="search" id="filter" placeholder="Search tokens…" aria-label="Search tokens">
+      <span class="count" id="count"></span></div>
+    <div class="chips" id="chips"></div>
+    <div class="listscroll">
+      <table class="dense" id="list">
+        <thead><tr><th data-k="title" class="sorted">Name</th><th data-k="kind">Kind</th><th data-k="footprint" class="num">Size</th><th data-k="set" class="num">Set</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="listfoot">
+      <button class="action" id="all" disabled>Download all (.zip)</button>
+      <span class="hint" id="progress"></span>
+    </div>
+  </section>
+  <section class="detail">
+    <div class="statblock" id="sb"><p class="hint">Drawing tokens…</p></div>
+    <div class="footer">LANCERTools is an unofficial fan tool, not affiliated with or
+      endorsed by Massif Press. Lancer is © Massif Press.</div>
+  </section>
+</main>
+<script type="module" src="js/ui/topbar.js"></script>
+<script type="module" src="js/ui/tokenkit.js"></script>
+</body>
+</html>

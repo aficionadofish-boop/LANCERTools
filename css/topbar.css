@@ -1,0 +1,23 @@
+/* The header every page shares, after 5etools' night mode: a #333 band with the page's name as a big
+   wordmark (Synthetik capitals, 5etools' full stop) and an italic how-to line, and the nav as tabs
+   hanging from the band (square tops, rounded bottom corners).
+   site.css imports this; the Token Stamper, which has its own stylesheet, loads only this. */
+@font-face { font-family: "Barlow Condensed"; font-weight: 700; src: url("../fonts/BarlowCondensed-Bold.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Barlow Condensed"; font-weight: 800; src: url("../fonts/BarlowCondensed-ExtraBold.ttf") format("truetype"); font-display: swap; }
+
+.topbar { font: 14px/1.42857 Arial, sans-serif; color: #bbb; }
+.topbar .band { background: #333; height: 42px; }
+.topbar .wrap { max-width: 1140px; margin: 0 auto; padding: 0 15px; }
+.topbar .band .wrap { display: flex; align-items: baseline; gap: 12px; height: 42px; overflow: hidden; }
+.brand { font-family: "Barlow Condensed", "Arial Narrow", Arial, sans-serif; font-weight: 800; text-transform: uppercase; font-size: 36px;
+  line-height: 42px; color: #d0d0d0; text-decoration: none; white-space: nowrap; letter-spacing: 0.01em; }
+.brand:hover { color: #fff; text-decoration: none; }
+.tagline { font-style: italic; color: #d0d0d0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tagline kbd { font: bold 12px/1 Consolas, "Courier New", monospace; font-style: normal; color: #d0d0d0; background: #2b2b2b;
+  border: 1px solid #555; border-bottom-width: 2px; border-radius: 3px; padding: 1px 4px; }
+.topbar nav { display: flex; flex-wrap: wrap; gap: 3px; }
+.topbar nav a { display: block; padding: 5px 14px 6px; background: #222; color: #bbb; text-decoration: none; border: 1px solid #555;
+  border-top: 0; border-radius: 0 0 4px 4px; white-space: nowrap; }
+.topbar nav a:hover { background: #2b2b2b; color: #d0d0d0; text-decoration: none; }
+.topbar nav a[aria-current="page"] { background: #333; color: #d0d0d0; }
+@media (max-width: 700px) { .tagline { display: none; } .brand { font-size: 30px; } }

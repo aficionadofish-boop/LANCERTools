@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LANCERTools</title>
+<meta name="description" content="Prep tools for LANCER games on Roll20: hex base maps in several styles, a terrain token kit, and a token stamper.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/site.css">
+<style>
+  .groups { display: flex; flex-wrap: wrap; gap: 14px 34px; margin-top: 4px; }
+  .group { display: flex; flex-direction: column; gap: 10px; }
+  .tiles { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tile { width: 134px; height: 110px; border: 2px solid currentColor; background: var(--panel); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+  .tile:hover { text-decoration: none; background: #2a2a2a; }
+  .tile svg { width: 52px; height: 52px; }
+  .tile span { color: var(--text); font: 700 19px/1 var(--title); text-transform: uppercase; letter-spacing: 0.02em; text-align: center; }
+  .tile.blue { color: var(--blue); }
+  .tile.teal { color: var(--teal); }
+  .tile.purple { color: var(--purple); }
+  .about h3 { font-size: 24px; font-weight: 400; color: var(--text); margin: 22px 0 8px; }
+  .about p { margin: 0 0 8px; max-width: 95ch; }
+</style>
+</head>
+<body>
+<header class="topbar" data-page="home" data-title="LANCERTools"></header>
+<main class="page">
+  <div class="groups">
+    <section class="group">
+      <h2 class="stripe blue">Maps</h2>
+      <div class="tiles">
+        <a class="tile blue" href="maps.html">
+          <svg viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round">
+            <path d="M16 6 26 12v12l-10 6-10-6V12z"/><path d="M36 6l10 6v12l-10 6-10-6V12z"/><path d="M26 24l10 6v12l-10 6-10-6V30z"/>
+          </svg>
+          <span>Map Maker</span>
+        </a>
+      </div>
+    </section>
+    <section class="group">
+      <h2 class="stripe teal">Tokens</h2>
+      <div class="tiles">
+        <a class="tile teal" href="tokens.html">
+          <svg viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round">
+            <path d="M26 4 45 15v22L26 48 7 37V15z"/><path d="M17 19h18v16H17z"/><path d="M17 19l18 16M35 19 17 35"/>
+          </svg>
+          <span>Token Kit</span>
+        </a>
+        <a class="tile teal" href="stamper.html">
+          <svg viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+            <path d="M21 6h10v8c0 4 4 6 4 10H17c0-4 4-6 4-10z"/><path d="M10 24h32v8H10z"/><path d="M13 40h26"/>
+          </svg>
+          <span>Token<br>Stamper</span>
+        </a>
+      </div>
+    </section>
+  </div>
+  <hr>
+  <div class="about">
+    <h3>Setting up in Roll20</h3>
+    <p>Everything here fits one grid: a <b>Hex (V)</b> page with <b>70 px</b> cells. Images are drawn at 2× for sharp zooming; the
+      size to set in Roll20 is in every file name (<span class="mono">crate_v1_70x81.png</span> → 70 × 81 px).</p>
+    <p>A <a href="maps.html">base map</a> holds only what never changes: the floor, the zones and the decals. Terrain that can be
+      destroyed (walls, cover, raised ground) goes on as <a href="tokens.html">tokens</a>, so you can delete it when it's shot away.</p>
+    <h3>Nothing leaves your browser</h3>
+    <p>Maps and tokens are drawn on your computer. The Map Maker keeps your current map in this browser between visits; save it
+      as a <span class="mono">.json</span> file to keep it for good.</p>
+  </div>
+  <div class="footer">LANCERTools is an unofficial fan tool, not affiliated with or endorsed by Massif Press. Lancer is © Massif Press.</div>
+</main>
+<script type="module" src="js/ui/topbar.js"></script>
+</body>
+</html>
