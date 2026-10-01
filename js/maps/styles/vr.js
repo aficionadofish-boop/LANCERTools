@@ -74,5 +74,6 @@ export function render(data, cell, opts = {}) {
   const img = floor(imageSize(data.cols, data.rows, cell), cell, o);
   // raised ground, the spawn pads and the flag stand are tokens: only the other zones are drawn
   const zones = Object.fromEntries(Object.entries(data.zones || {}).filter(([k]) => k !== "spawn" && k !== "flag"));
-  return drawAllZones(img, zones, cell, o);
+  // the default control-zone purple vanishes on the violet floor: amber instead
+  return drawAllZones(img, zones, cell, o, { control_zone: [[245, 190, 70], 44] });
 }
