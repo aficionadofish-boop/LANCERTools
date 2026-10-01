@@ -258,6 +258,40 @@ function flagToken(cell) {
   return withShadow(out, cell, 0.04, 0.06, 0.04, 0.5);
 }
 
+// Difficult terrain: loose basalt scree and crystal grit on a dark stain that fills the hex, so a patch
+// of neighbouring tokens reads as one stretch of broken ground (JS only, 2026-10-01)
+function scree(cell, seed) {
+  const { img, cs } = tokenCanvas(cell, [[0, 0]]), { w, h } = img, [cx, cy] = cs[0], r = new PyRandom(seed);
+  const stain = newImage("RGBA", w, h), sd = new Draw(stain);
+  sd.polygon(hexPoints(cx, cy, cell, 0.008), [40, 30, 70, 64]);          // a hair inside the rim: no dark seams between tiles
+  const stones = newImage("RGBA", w, h), d = new Draw(stones), inner = maskOf([w, h], cs, cell, 0.16);
+  for (let i = 0, placed = 0; i < 400 && placed < 34; i++) {
+    const x = cx + r.uniform(-0.5, 0.5) * cell, y = cy + r.uniform(-0.55, 0.55) * cell;
+    if (!inner.data[T(y) * w + T(x)]) continue;
+    placed++;
+    const R = cell * r.uniform(0.03, 0.085), n = r.randint(5, 7), rim = [], k0 = r.uniform(0.8, 1.1);
+    for (let k = 0; k < n; k++) {
+      const a = 2 * Math.PI * k / n + r.uniform(-0.25, 0.25);
+      rim.push([x + Math.cos(a) * R * r.uniform(0.7, 1.1), y + Math.sin(a) * R * r.uniform(0.7, 1.1) * 0.85]);
+    }
+    const core = [x - R * 0.2, y - R * 0.25];
+    for (let k = 0; k < n; k++) {                                          // faceted like the boulders
+      const a = rim[k], b = rim[(k + 1) % n], mid = [(a[0] + b[0]) / 2 - x, (a[1] + b[1]) / 2 - y];
+      const light = k0 * (0.75 + 0.45 * (-(mid[0] + mid[1]) / (Math.hypot(...mid) * 1.42 + 1e-6)));
+      d.polygon([core, a, b], [...[128, 116, 168].map((v) => T(Math.min(255, v * light))), 255]);
+    }
+    d.polygon(rim, null, { outline: [64, 54, 96, 255], width: 1 });
+  }
+  for (let i = 0; i < 6; i++) {                                            // crystal grit
+    const x = cx + r.uniform(-0.32, 0.32) * cell, y = cy + r.uniform(-0.36, 0.36) * cell, s = cell * r.uniform(0.025, 0.045);
+    d.polygon([[x, y - s], [x + s * 0.5, y], [x, y + s * 0.6], [x - s * 0.5, y]], [190, 160, 240, 255]);
+  }
+  alphaCompositeAt(stain, withShadow(stones, cell, 0.03, 0.04, 0.025, 0.6));
+  const m = maskOf([w, h], cs, cell);                                      // nothing outside the hex
+  for (let p = 0; p < w * h; p++) stain.data[p * 4 + 3] = Math.min(stain.data[p * 4 + 3], m.data[p]);
+  return stain;
+}
+
 function padToken(cell) { return spawnPad(tokenCanvas(cell, [[0, 0]]).img, 0, 0, cell); }
 function flagStandToken(cell) { return flagStand(tokenCanvas(cell, [[0, 0]]).img, 0, 0, cell); }
 
@@ -281,4 +315,7 @@ export const TOKENS = {
   vr_boulder_size1_v2: (c) => boulder(c, [[0, 0]], 22),
   vr_boulder_size2: (c) => boulder(c, size2Footprint(c), 23),
   vr_flag: flagToken,
+  vr_scree_v1: (c) => scree(c, 61),
+  vr_scree_v2: (c) => scree(c, 62),
+  vr_scree_v3: (c) => scree(c, 63),
 };

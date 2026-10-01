@@ -79,6 +79,31 @@ function tokenBomb(cell) {
   return groundShadow(grime(out, cell, 1501, 0.1), cell);
 }
 
+// --- the mine ----------------------------------------------------------------------------------------------
+
+// A round pressure mine: a squat dark disc with a ring of bolts, a yellow-black hazard ring round a raised
+// pressure plate, and a red lamp. About half a hex across, so the hex it sits in still shows.
+function tokenMine(cell) {
+  const [lay, , cs] = layerFor(cell), { w, h } = lay, [cx, cy0] = cs[0], c = cell, cy = cy0 + c * 0.04;
+  const R = c * 0.25, H = c * 0.07, P = c * 0.1;
+  const shapes = [
+    cylinder([cx, cy, 0], [cx, cy, H], R, { kind: "body" }),
+    cylinder([cx, cy, H], [cx, cy, H + c * 0.025], P, { kind: "plate" }),
+    sphere([cx + R * 0.62, cy - R * 0.1, H], c * 0.022, { kind: "lamp", gloss: 0.9 }),
+  ];
+  const out = trace(w, h, shapes, (sp, p, n) => {
+    if (sp.kind === "lamp") return [255, 60, 44];
+    const { r, w: wv, cap } = onCyl(sp, p, n);
+    if (sp.kind === "plate") return cap === 1 ? (Math.abs(r - P * 0.55) < P * 0.12 ? [44, 46, 40] : [92, 96, 84]) : [60, 62, 54];
+    if (cap !== 1) return sh([58, 62, 52], mottle(p, 4, 0.2));                // the side
+    const a = Math.atan2(wv[1], wv[0]);
+    if (Math.abs(r - R * 0.86) < R * 0.05 && Math.abs(((a / (Math.PI / 4)) % 1 + 1) % 1 - 0.5) > 0.38) return [150, 150, 136];   // bolts
+    if (r > P * 1.1 && r < R * 0.68) return Math.floor((a + Math.PI) / (Math.PI / 6)) % 2 ? [228, 182, 52] : [28, 28, 26];   // hazard ring
+    return sh([74, 78, 66], mottle(p, 5, 0.2));
+  }, { gloss: 0.3 });
+  return groundShadow(grime(out, cell, 1601, 0.08), cell);
+}
+
 // --- blast areas -------------------------------------------------------------------------------------------
 
 // the hex centres of a Blast n around the anchor (the anchor first)
@@ -151,6 +176,7 @@ function tokenBlast(cell, n) {
 
 export const TOKENS = {
   bomb: tokenBomb,
+  mine: tokenMine,
   blast_area_1: (c) => tokenBlast(c, 1),
   blast_area_2: (c) => tokenBlast(c, 2),
   blast_area_3: (c) => tokenBlast(c, 3),
