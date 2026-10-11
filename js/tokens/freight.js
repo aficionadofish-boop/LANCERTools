@@ -11,14 +11,14 @@
 // drawn for its place (north/south side, west/east end): none need rotating, so the light always falls
 // from the north-west.
 
-import { NpRandom, PyRandom } from "../rng.js?v=17b5fe87f1";
-import { newImage, Draw, alphaComposite, alphaCompositeAt, paste, gaussianBlur, rotate, u8 } from "../raster.js?v=17b5fe87f1";
-import { geometry, hexPoints } from "../maps/geometry.js?v=17b5fe87f1";
-import { maskOf, stripes } from "../maps/common.js?v=17b5fe87f1";
-import { tokenCanvas, grime } from "./kit.js?v=17b5fe87f1";
-import { groundShadow } from "./shadow.js?v=17b5fe87f1";
-import { fblur, drapeTarp } from "./training.js?v=17b5fe87f1";
-import { layerFor, row2, fine, fill, addCyl, addBox, project, box, chips } from "./depot.js?v=17b5fe87f1";
+import { NpRandom, PyRandom } from "../rng.js?v=2686ebecc7";
+import { newImage, Draw, alphaComposite, alphaCompositeAt, paste, gaussianBlur, rotate, u8 } from "../raster.js?v=2686ebecc7";
+import { geometry, hexPoints } from "../maps/geometry.js?v=2686ebecc7";
+import { maskOf, stripes } from "../maps/common.js?v=2686ebecc7";
+import { tokenCanvas, grime } from "./kit.js?v=2686ebecc7";
+import { groundShadow } from "./shadow.js?v=2686ebecc7";
+import { fblur, drapeTarp } from "./training.js?v=2686ebecc7";
+import { layerFor, row2, fine, fill, addCyl, addBox, project, box, chips } from "./depot.js?v=2686ebecc7";
 
 const T = Math.trunc;
 const sh = (c, k) => c.map((v) => Math.max(0, Math.min(255, T(v * k))));
@@ -449,37 +449,39 @@ function tokenMachine(cell) {
 // Big woven sacks, square and bulging, a lifting loop at each corner and a printed panel
 
 function tokenBulkBags(cell, v = 0) {
-  const [lay, , cs] = layerFor(cell), { w, h } = lay, [cx, cy0] = cs[0], cy = cy0 + cell * 0.14;
-  const bags = v ? [[-0.2, -0.04, 0.19], [0.2, 0.0, 0.19]] : [[-0.19, -0.18, 0.17], [0.19, -0.16, 0.17], [-0.17, 0.18, 0.17], [0.2, 0.2, 0.17]];
-  let z = new Float32Array(w * h);
-  const H = cell * (v ? 0.36 : 0.26);
-  for (const [ox, oy, s0] of bags) {
-    const bx = cx + ox * cell, by = cy + oy * cell, s = s0 * cell;
-    for (let y = T(by - s); y < by + s; y++) for (let x = T(bx - s); x < bx + s; x++) {
-      if (x < 0 || y < 0 || x >= w || y >= h) continue;
-      const e = Math.min(x - (bx - s), bx + s - x, y - (by - s), by + s - y) / s;            // 0 at the edge, 1 in the middle
-      z[y * w + x] = Math.max(z[y * w + x], H * (0.75 + 0.25 * Math.min(1, e * 2.5)) * Math.min(1, e * 6));
+  const [lay, d, cs] = layerFor(cell), [cx, cy0] = cs[0], cy = cy0 + cell * 0.16;
+  const bags = (v ? [[-0.2, -0.02, 0.17, 0.4], [0.2, 0.02, 0.17, 0.4]] : [[-0.19, -0.2, 0.16, 0.26], [0.19, -0.18, 0.16, 0.26], [-0.18, 0.16, 0.16, 0.26], [0.2, 0.18, 0.16, 0.26]])
+    .sort((a, b) => a[1] - b[1]);                                                         // north to south, so near bags overlap far ones
+  const cloth = [204, 198, 180], web = [92, 122, 168], t = Math.max(3, T(cell * 0.028));
+  for (const [ox, oy, s0, h0] of bags) {
+    const bx = cx + ox * cell, by = cy + oy * cell, s = s0 * cell, H = h0 * cell;
+    const x0 = bx - s, x1 = bx + s, y0 = by - s * 0.8, y1 = by + s * 0.8, bulge = s * 0.12;
+    const face = [[x0 + 2, y1 - H], [x1 - 2, y1 - H], [x1 + bulge * 0.4, y1 - H * 0.45], [x1, y1], [bx, y1 + bulge * 0.6], [x0, y1], [x0 - bulge * 0.4, y1 - H * 0.45]];
+    d.polygon(face, A(sh(cloth, 0.74)));                                                  // the south face, bulging
+    for (let k = 1; k < 9; k++) {                                                          // its weave: fine vertical threads
+      const x = x0 + ((x1 - x0) * k) / 9;
+      d.line([[x, y1 - H + 3], [x + (x - bx) * 0.04, y1 - 2]], A(sh(cloth, 0.66)), 1);
+    }
+    d.line([[x0 + s * 0.15, y1 - H + 2], [x0 + s * 0.12, y1 - 2]], A(sh(cloth, 0.6)), 2);  // corner seams
+    d.line([[x1 - s * 0.15, y1 - H + 2], [x1 - s * 0.12, y1 - 2]], A(sh(cloth, 0.6)), 2);
+    d.rectangle([bx - s * 0.5, y1 - H * 0.7, bx + s * 0.5, y1 - H * 0.36], { fill: A([226, 222, 210]), outline: A([60, 70, 96]), width: 2 });   // the printed panel
+    d.rectangle([bx - s * 0.5, y1 - H * 0.7, bx + s * 0.5, y1 - H * 0.6], { fill: A([60, 70, 96]) });
+    d.roundedRectangle([x0, y0 - H, x1, y1 - H], s * 0.32, { fill: A(cloth) });          // the top: a soft pillow, lit from the north-west
+    d.roundedRectangle([x0 + s * 0.12, y0 - H + s * 0.1, x1 - s * 0.3, y1 - H - s * 0.3], s * 0.26, { fill: A(sh(cloth, 1.08)) });
+    d.roundedRectangle([x0 + s * 0.3, y0 - H + s * 0.22, bx, by - H - s * 0.1], s * 0.2, { fill: A(sh(cloth, 1.15)) });
+    d.roundedRectangle([x0, y0 - H, x1, y1 - H], s * 0.32, { outline: A(sh(cloth, 0.7)), width: 2 });
+    d.ellipse([bx - s * 0.2, by - H - s * 0.16, bx + s * 0.2, by - H + s * 0.16], { fill: A(sh(cloth, 0.82)) });   // the filling spout, gathered and tied
+    d.ellipse([bx - s * 0.1, by - H - s * 0.09, bx + s * 0.1, by - H + s * 0.07], { fill: A(sh(cloth, 1.12)) });
+    d.line([[bx - s * 0.16, by - H + s * 0.02], [bx + s * 0.16, by - H + s * 0.02]], A(web), 2);
+    for (const [qx, qy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {                        // lifting loops: feet on the top corners, standing up
+      const fx = bx + qx * s * 0.72, fy = by - H + qy * s * 0.56, lw = s * 0.22, lh = s * 0.42;
+      d.arc([fx - lw, fy - lh, fx + lw, fy + lh * 0.3], 180, 360, A(sh(web, 0.6)), t + 2);
+      d.arc([fx - lw, fy - lh, fx + lw, fy + lh * 0.3], 180, 360, A(web), t);
+      d.line([[fx - lw + 1, fy - lh * 0.35], [fx - lw + 1, fy + 2]], A(web), t);           // the loop's two feet, stitched down
+      d.line([[fx + lw - 1, fy - lh * 0.35], [fx + lw - 1, fy + 2]], A(web), t);
     }
   }
-  z = fblur(z, w, h, cell * 0.02);
-  const weave = mottler(w, h, 681 + v, cell, 0.12), bag = [196, 188, 166];
-  let out = project(w, h, z, (x, y, hgt) => {
-    const wv = (T(x / 3) + T(y / 3)) % 2 ? 1 : 0.94;
-    for (const [ox, oy, s0] of bags) {                                                   // the printed panel on each top
-      const bx = cx + ox * cell, by = cy + oy * cell, s = s0 * cell;
-      if (hgt > H * 0.9 && Math.abs(x - bx) < s * 0.42 && Math.abs(y - by) < s * 0.3) return Math.abs(y - by) < s * 0.08 ? [60, 70, 90] : [222, 218, 206];
-    }
-    return weave(sh(bag, wv), x, y);
-  }, { gloss: 0.05, k: 0.8 });
-  const d = new Draw(out), t = Math.max(3, T(cell * 0.026));
-  for (const [ox, oy, s0] of bags) {                                                    // the lifting loops, standing up at the corners
-    const bx = cx + ox * cell, by = cy + oy * cell - H * 0.8, s = s0 * cell * 0.8;
-    for (const [qx, qy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-      const lx = bx + qx * s, ly = by + qy * s * 0.8;
-      d.arc([lx - cell * 0.035, ly - cell * 0.07, lx + cell * 0.035, ly + cell * 0.01], 180, 360, A([60, 74, 110]), t);
-    }
-  }
-  return shadowed(grime(out, cell, 682 + v, 0.1), cell);
+  return shadowed(grime(lay, cell, 682 + v, 0.1), cell);
 }
 
 // --- fuel and ordnance -------------------------------------------------------------------------------------------

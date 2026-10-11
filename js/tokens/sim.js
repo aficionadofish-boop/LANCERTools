@@ -6,12 +6,12 @@
 // added here for the fins and the cradle. The blast areas are the exact hex footprint of the Blast (a hex
 // and its rings), filled with fire that fades from a hot core to a smoky rim, with the outer edge drawn.
 
-import { newImage, Draw } from "../raster.js?v=17b5fe87f1";
-import { geometry, hexPoints } from "../maps/geometry.js?v=17b5fe87f1";
-import { maskOf } from "../maps/common.js?v=17b5fe87f1";
-import { tokenCanvas, grime } from "./kit.js?v=17b5fe87f1";
-import { groundShadow } from "./shadow.js?v=17b5fe87f1";
-import { layerFor, trace, cylinder, sphere, onCyl, mottle, sh } from "./depot.js?v=17b5fe87f1";
+import { newImage, Draw } from "../raster.js?v=2686ebecc7";
+import { geometry, hexPoints } from "../maps/geometry.js?v=2686ebecc7";
+import { maskOf } from "../maps/common.js?v=2686ebecc7";
+import { tokenCanvas, grime } from "./kit.js?v=2686ebecc7";
+import { groundShadow } from "./shadow.js?v=2686ebecc7";
+import { layerFor, trace, cylinder, sphere, onCyl, mottle, sh } from "./depot.js?v=2686ebecc7";
 
 const K = 0.85;   // the kit's view: a point (x, y, z) shows at (x, y - K z); must match depot.js
 

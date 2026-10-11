@@ -10,11 +10,11 @@
 //
 // Every layer has its own random stream, so a slider changes only its own layer.
 
-import { NpRandom, PyRandom } from "../../rng.js?v=17b5fe87f1";
-import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=17b5fe87f1";
-import { centre, geometry, imageSize } from "../geometry.js?v=17b5fe87f1";
-import { noise, decalBlast, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper } from "../common.js?v=17b5fe87f1";
-import { drawAllZones } from "../common.js?v=17b5fe87f1";
+import { NpRandom, PyRandom } from "../../rng.js?v=2686ebecc7";
+import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=2686ebecc7";
+import { centre, geometry, imageSize } from "../geometry.js?v=2686ebecc7";
+import { noise, decalBlast, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=2686ebecc7";
+import { drawAllZones } from "../common.js?v=2686ebecc7";
 
 const FLOOR = [52, 54, 58];
 const FLOOR_DARK = [34, 35, 38];
@@ -46,11 +46,14 @@ function floor([w, h], cell, o) {
 function stains(img, cell, o) {
   const { w, h } = img, over = newImage("RGBA", w, h), d = new Draw(over), r = new PyRandom(211);
   const area = (w * h) / (cell * cell), keep = keeper(211, o.grime);
-  const n = Math.round(area / 3);
-  for (let i = 0; i < n; i++) {
-    const x = r.uniform(0, w), y = r.uniform(0, h), rx = cell * r.uniform(0.2, 0.9), ry = rx * r.uniform(0.3, 0.7), a = r.randint(20, 55);
-    if (keep(i)) d.ellipse([x - rx, y - ry, x + rx, y + ry], { fill: [14, 14, 16, a] });
-  }
+  const n = Math.round(area / 3), more = extras(n, o.grime, 1211);
+  const one = (g) => {
+    const x = g.uniform(0, w), y = g.uniform(0, h), rx = cell * g.uniform(0.2, 0.9), ry = rx * g.uniform(0.3, 0.7), a = g.randint(20, 55);
+    const deep = Math.min(255, Math.round(a * Math.max(1, 1 + (o.grime - 1) * 1.6)));        // above 100% the stains darken too
+    return () => d.ellipse([x - rx, y - ry, x + rx, y + ry], { fill: [14, 14, 16, deep] });
+  };
+  for (let i = 0; i < n; i++) { const draw = one(r); if (keep(i)) draw(); }
+  for (let i = 0; i < more.count; i++) one(more.rng)();                          // above 100%: more stains, the rest unmoved
   return alphaComposite(img, gaussianBlur(over, cell * 0.08));
 }
 
@@ -218,15 +221,15 @@ function speedLines(img, cell, o) {
 export const name = "Freight Tunnel";
 export const blurb = "The ground under a moving train: a dark concrete trench between lined tunnel walls with cable trays and lamps, the railway down the middle, everything streaked by the speed. The train itself is tokens.";
 export const decals = ["tracks", "blast", "scorch", "hazard_ring", "floor_hatch"];
-export const terrainNote = "Freight Tunnel draws it as the tunnel wall; a whole row of it gives one straight wall face.";
+export const terrainNote = "Freight Tunnel draws it as the tunnel wall, with the lamps and cable trays; a whole row of it gives one straight wall face. Paint the top and bottom rows for a tunnel.";
 export const tools = {
   tracks: { label: "Railway track", hint: "Click the start hex, then the end hex: ballast, sleepers and two rails between them (they run on half a hex past each end)." },
   hatch: { label: "Drain grate", hint: "A drain grate in the trench floor." },
 };
 export const settings = [
   { id: "grime", label: "Stains and wear", group: "Ground", type: "range", min: 0, max: 2, step: 0.05, default: 1 },
-  { id: "cables", label: "Cable trays", group: "Walls", type: "range", min: 0, max: 1, step: 0.05, default: 1 },
-  { id: "lamps", label: "Lamps (how many)", group: "Walls", type: "range", min: 0, max: 2, step: 0.05, default: 1 },
+  { id: "cables", label: "Cable trays (on painted walls)", group: "Walls", type: "range", min: 0, max: 1, step: 0.05, default: 1 },
+  { id: "lamps", label: "Lamps (on painted walls)", group: "Walls", type: "range", min: 0, max: 2, step: 0.05, default: 1 },
   { id: "motion", label: "Motion streaks", group: "Speed", type: "range", min: 0, max: 2, step: 0.05, default: 1 },
   { id: "speedlines", label: "Speed lines", group: "Speed", type: "range", min: 0, max: 1, step: 0.05, default: 1 },
   ...ZONE_SETTINGS,

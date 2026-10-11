@@ -5,7 +5,7 @@
 //   "stencil" Barlow Condensed ExtraBold: heavy condensed capitals (Synthetik's floor stencils).
 // installText(fontsDir) loads both from the site's fonts/ folder.
 
-import { setTextRasterizer } from "../raster.js?v=17b5fe87f1";
+import { setTextRasterizer } from "../raster.js?v=2686ebecc7";
 
 const FAMILIES = {
   sans: { css: "LTArimo", file: "Arimo-Bold.ttf", weight: "700", ascent: (size) => Math.ceil((1854 / 2048) * size) },

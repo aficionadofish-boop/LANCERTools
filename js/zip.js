@@ -1,7 +1,7 @@
 // A ZIP of files, stored uncompressed (PNGs are compressed already).
 // zipBlob([{name, data: Uint8Array}]) -> Blob
 
-import { crc32 } from "./png.js?v=17b5fe87f1";
+import { crc32 } from "./png.js?v=2686ebecc7";
 
 export function zipBlob(files) {
   const enc = new TextEncoder(), parts = [], central = [];
@@ -10,7 +10,8 @@ export function zipBlob(files) {
     const name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
     const local = new Uint8Array(30 + name.length), v = new DataView(local.buffer);
     v.setUint32(0, 0x04034b50, true); v.setUint16(4, 20, true); v.setUint16(6, 0x0800, true);   // UTF-8 names
-    v.setUint16(8, 0, true); v.setUint16(12, 33, true); v.setUint32(14, crc, true);            // dated 1980-01-01 v.setUint32(18, size, true); v.setUint32(22, size, true);
+    v.setUint16(8, 0, true); v.setUint16(12, 33, true); v.setUint32(14, crc, true);            // dated 1980-01-01
+    v.setUint32(18, size, true); v.setUint32(22, size, true);                                    // the sizes (Windows Explorer reads these)
     v.setUint16(26, name.length, true);
     local.set(name, 30);
     const cen = new Uint8Array(46 + name.length), c = new DataView(cen.buffer);

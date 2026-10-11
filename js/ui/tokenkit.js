@@ -2,10 +2,10 @@
 // stat block for the selected token, with its preview and downloads. Tokens are drawn by the render
 // worker: the selected one first, the rest in the background (for the ZIPs).
 
-import { Renderer } from "./renderer.js?v=17b5fe87f1";
-import { TOKENS } from "../tokens/index.js?v=17b5fe87f1";
-import { describe, SETS, FOOTPRINT_TEXT } from "../tokens/meta.js?v=17b5fe87f1";
-import { zipBlob } from "../zip.js?v=17b5fe87f1";
+import { Renderer } from "./renderer.js?v=2686ebecc7";
+import { TOKENS } from "../tokens/index.js?v=2686ebecc7";
+import { describe, SETS, FOOTPRINT_TEXT } from "../tokens/meta.js?v=2686ebecc7";
+import { zipBlob } from "../zip.js?v=2686ebecc7";
 
 const $ = (id) => document.getElementById(id);
 const renderer = new Renderer();
