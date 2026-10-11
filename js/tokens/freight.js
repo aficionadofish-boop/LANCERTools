@@ -11,14 +11,14 @@
 // drawn for its place (north/south side, west/east end): none need rotating, so the light always falls
 // from the north-west.
 
-import { NpRandom, PyRandom } from "../rng.js?v=2686ebecc7";
-import { newImage, Draw, alphaComposite, alphaCompositeAt, paste, gaussianBlur, rotate, u8 } from "../raster.js?v=2686ebecc7";
-import { geometry, hexPoints } from "../maps/geometry.js?v=2686ebecc7";
-import { maskOf, stripes } from "../maps/common.js?v=2686ebecc7";
-import { tokenCanvas, grime } from "./kit.js?v=2686ebecc7";
-import { groundShadow } from "./shadow.js?v=2686ebecc7";
-import { fblur, drapeTarp } from "./training.js?v=2686ebecc7";
-import { layerFor, row2, fine, fill, addCyl, addBox, project, box, chips } from "./depot.js?v=2686ebecc7";
+import { NpRandom, PyRandom } from "../rng.js?v=c79553d828";
+import { newImage, Draw, alphaComposite, alphaCompositeAt, paste, gaussianBlur, rotate, u8 } from "../raster.js?v=c79553d828";
+import { geometry, hexPoints } from "../maps/geometry.js?v=c79553d828";
+import { maskOf, stripes } from "../maps/common.js?v=c79553d828";
+import { tokenCanvas, grime } from "./kit.js?v=c79553d828";
+import { groundShadow } from "./shadow.js?v=c79553d828";
+import { fblur, drapeTarp } from "./training.js?v=c79553d828";
+import { layerFor, row2, fine, fill, addCyl, addBox, project, box, chips } from "./depot.js?v=c79553d828";
 
 const T = Math.trunc;
 const sh = (c, k) => c.map((v) => Math.max(0, Math.min(255, T(v * k))));
@@ -626,6 +626,58 @@ function tokenCoupler(cell, open = false) {
   return shadowed(chips(lay, 740 + (open ? 1 : 0), 6, cell), cell);
 }
 
+// The heavy coupling (Size 3), centred on the gap hex of a wagon's middle row. With stepped ends the gap
+// zig-zags: on the middle row it is that hex, on the rows above and below it sits half a hex east. So: the
+// knuckle couplers on drawbars in the middle, a pair of buffers meeting in the gap above and below, safety
+// chains and air hoses between. open: uncoupled, everything parted, the chains and hoses hanging loose
+function tokenCouplerBig(cell, open = false) {
+  const [sx, sy, hw] = geometry(cell), fp = [[0, 0], [sx, 0], [-sx, 0], [hw, -sy], [-hw, -sy], [hw, sy], [-hw, sy]];
+  const [lay, d, cs] = layerFor(cell, fp), [cx, cy] = cs[0], gap = open ? cell * 0.14 : 0;
+  const steel = [74, 76, 82], lit = [156, 160, 166], dark = [26, 26, 30], t = Math.max(2, T(cell * 0.02));
+  const bar = (x0, x1, y, hh) => {                                                     // a lit steel bar between two x
+    d.rectangle([Math.min(x0, x1), y - hh, Math.max(x0, x1), y + hh], { fill: A(steel) });
+    d.rectangle([Math.min(x0, x1), y - hh, Math.max(x0, x1), y - hh * 0.45], { fill: A(lit) });
+    d.rectangle([Math.min(x0, x1), y + hh * 0.6, Math.max(x0, x1), y + hh], { fill: A(dark) });
+  };
+  for (const s of [-1, 1]) {                                                           // the couplers, middle row
+    const x0 = cx + s * (hw + 4), kx = cx + s * (cell * 0.15 + gap);
+    bar(x0, kx, cy, cell * 0.075);
+    d.polygon([[kx - s * cell * 0.03, cy - cell * 0.2], [kx + s * cell * 0.13, cy - cell * 0.2], [kx + s * cell * 0.16, cy - cell * 0.04], [kx + s * cell * 0.13, cy + cell * 0.2], [kx - s * cell * 0.03, cy + cell * 0.2]].map(([x, y]) => [x - s * cell * 0.13, y]), A([62, 64, 70]));   // the knuckle head
+    d.line([[kx - s * cell * 0.16, cy - cell * 0.2], [kx, cy - cell * 0.2]], A(lit), 3);
+    d.rectangle([kx - s * cell * 0.1 - cell * 0.04, cy - cell * 0.08, kx - s * cell * 0.1 + cell * 0.04, cy + cell * 0.08], { fill: A(dark) });
+    d.ellipse([kx - s * cell * 0.08 - cell * 0.03, cy - cell * 0.27, kx - s * cell * 0.08 + cell * 0.03, cy - cell * 0.21], { fill: A(lit) });   // the lift pin
+    for (const dy of [-1, 1]) {                                                         // buffers in the gap above and below
+      const by = cy + dy * sy, bx = cx + hw, stemEnd = bx + s * (cell * 0.16 + gap), wall = bx + s * (hw + 4);
+      bar(wall, stemEnd, by, cell * 0.06);
+      const px = stemEnd;                                                               // the buffer head: a round steel pad seen edge-on
+      d.rectangle([px - (s < 0 ? 0 : cell * 0.06), by - cell * 0.2, px + (s < 0 ? cell * 0.06 : 0), by + cell * 0.2], { fill: A([96, 98, 104]), outline: A(dark), width: 2 });
+      d.line([[px + (s < 0 ? cell * 0.06 : -cell * 0.06), by - cell * 0.2], [px + (s < 0 ? cell * 0.06 : -cell * 0.06), by + cell * 0.2]], A(lit), 2);
+      const stripe = newImage("L", lay.w, lay.h);                                       // hazard band on the stem
+      new Draw(stripe).rectangle([Math.min(wall, stemEnd) + cell * 0.04, by - cell * 0.06, Math.max(wall, stemEnd) - cell * 0.1, by + cell * 0.06], { fill: 255 });
+      paste(lay, stripes([lay.w, lay.h], hazW(cell), HAZ), stripe);
+    }
+    const hx = cx + s * (hw - cell * 0.05), hy = cy + cell * 0.32;                       // the air hose, middle row
+    const hose = open ? [[hx, hy - cell * 0.04], [cx + s * cell * 0.3, hy + cell * 0.14], [cx + s * (cell * 0.18 + gap), hy + cell * 0.28]] : [[hx, hy - cell * 0.04], [cx + s * cell * 0.2, hy + cell * 0.06], [cx, hy + cell * 0.1]];
+    d.line(hose, A([22, 22, 24]), T(cell * 0.05), "curve");
+    d.line(hose.map(([x, y]) => [x, y - 2]), A([74, 74, 78]), 1);
+    d.ellipse([hx - cell * 0.04, hy - cell * 0.08, hx + cell * 0.04, hy], { fill: A(HAZ_RED) });   // the angle cock
+  }
+  for (const dy of [-1, 1]) {                                                           // safety chains, from beam to beam across the middle
+    const y0 = cy + dy * cell * 0.36, pts = [];
+    for (let k = 0; k <= 14; k++) {
+      const f = k / 14, x = cx - hw + f * cell, sag = open ? (f < 0.5 ? f : 1 - f) * cell * 0.5 * (f < 0.42 || f > 0.58 ? 1 : 0) : Math.sin(f * Math.PI) * cell * 0.08;
+      if (open && f > 0.42 && f < 0.58) continue;                                         // parted in the middle
+      pts.push([x, y0 + dy * sag]);
+    }
+    for (let k = 0; k < pts.length; k++) {
+      const [x, y] = pts[k], vert = k % 2;
+      d.ellipse(vert ? [x - 3, y - 6, x + 3, y + 6] : [x - 6, y - 3, x + 6, y + 3], { outline: A([150, 150, 154]), width: 2 });
+    }
+  }
+  if (!open) d.ellipse([cx - cell * 0.04, cy + cell * 0.38, cx + cell * 0.04, cy + cell * 0.46], { fill: A([150, 150, 154]) });   // the glad hands, joined
+  return shadowed(chips(lay, 745 + (open ? 1 : 0), 14, cell), cell);
+}
+
 // a harness anchor: a welded padeye with its shackle, on a yellow-and-black painted base plate. Small, to scatter
 // about the deck: a harnessed character clips on here. v2 is a pair
 function tokenHarnessAnchor(cell, v = 0) {
@@ -831,6 +883,8 @@ export const TOKENS = {
   fl_reel_size3: (c) => tokenReel(c, 3),
   fl_coupler: (c) => tokenCoupler(c, false),
   fl_coupler_open: (c) => tokenCoupler(c, true),
+  fl_coupler_size3: (c) => tokenCouplerBig(c, false),
+  fl_coupler_open_size3: (c) => tokenCouplerBig(c, true),
   fl_harness_anchor_v1: (c) => tokenHarnessAnchor(c, 0),
   fl_harness_anchor_v2: (c) => tokenHarnessAnchor(c, 1),
   fl_harness_locker: tokenHarnessLocker,

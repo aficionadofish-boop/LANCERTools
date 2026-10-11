@@ -2,10 +2,10 @@
 // V-Reality chamber. The base map is a violet nebula floor with faint giant rings, rubble specks and
 // a few embers, plus the deploy zone. Raised ground, the spawn pads and the flag stand are tokens.
 
-import { NpRandom, PyRandom } from "../../rng.js?v=2686ebecc7";
-import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=2686ebecc7";
-import { imageSize } from "../geometry.js?v=2686ebecc7";
-import { noise, drawAllZones, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=2686ebecc7";
+import { NpRandom, PyRandom } from "../../rng.js?v=c79553d828";
+import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=c79553d828";
+import { imageSize } from "../geometry.js?v=c79553d828";
+import { noise, drawAllZones, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=c79553d828";
 
 const F = Math.fround;
 const FLOOR = [98, 70, 152];
