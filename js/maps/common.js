@@ -1,9 +1,9 @@
 // What every map style shares (from roll20_maps.py): noise, the sitrep zones, and the decals.
 // Ported line for line; random numbers come from rng.js, so layouts match the Python tools.
 
-import { NpRandom, PyRandom } from "../rng.js?v=0f282507bd";
-import { newImage, Draw, alphaComposite, paste, gaussianBlur, resizeL, toL, u8 } from "../raster.js?v=0f282507bd";
-import { centre, hexPoints, zoneEdges, connectedParts } from "./geometry.js?v=0f282507bd";
+import { NpRandom, PyRandom } from "../rng.js?v=17b5fe87f1";
+import { newImage, Draw, alphaComposite, paste, gaussianBlur, resizeL, toL, u8 } from "../raster.js?v=17b5fe87f1";
+import { centre, hexPoints, zoneEdges, connectedParts } from "./geometry.js?v=17b5fe87f1";
 
 const F = Math.fround;
 

@@ -2,11 +2,11 @@
 // chipped concrete, dark gunmetal, red-orange caps and bands, wooden pallets; and the raised steel
 // deck plates (tread plate, from milbay_map.tread_plate).
 
-import { NpRandom, PyRandom } from "../rng.js?v=0f282507bd";
-import { newImage, Draw, alphaComposite, alphaCompositeAt, paste, gaussianBlur, u8 } from "../raster.js?v=0f282507bd";
-import { geometry, hexPoints, radians, arange, linspace } from "../maps/geometry.js?v=0f282507bd";
-import { noise, stripes, maskOf } from "../maps/common.js?v=0f282507bd";
-import { tokenCanvas, withShadow, grime, bevelBox } from "./kit.js?v=0f282507bd";
+import { NpRandom, PyRandom } from "../rng.js?v=17b5fe87f1";
+import { newImage, Draw, alphaComposite, alphaCompositeAt, paste, gaussianBlur, u8 } from "../raster.js?v=17b5fe87f1";
+import { geometry, hexPoints, radians, arange, linspace } from "../maps/geometry.js?v=17b5fe87f1";
+import { noise, stripes, maskOf } from "../maps/common.js?v=17b5fe87f1";
+import { tokenCanvas, withShadow, grime, bevelBox } from "./kit.js?v=17b5fe87f1";
 
 const F = Math.fround;
 const T = Math.trunc;

@@ -6,11 +6,11 @@
 // Drawn like the rest of the kit: from above with the near (south) face showing, the kit's shadow
 // (down-right, so sets mix on one map), colours warmed to sit on the Training Floor's orange floor.
 
-import { PyRandom } from "../rng.js?v=0f282507bd";
-import { newImage, Draw, alphaComposite, alphaCompositeAt, paste } from "../raster.js?v=0f282507bd";
-import { geometry } from "../maps/geometry.js?v=0f282507bd";
-import { tokenCanvas, grime, size2Footprint, clipToHex } from "./kit.js?v=0f282507bd";
-import { groundShadow } from "./shadow.js?v=0f282507bd";
+import { PyRandom } from "../rng.js?v=17b5fe87f1";
+import { newImage, Draw, alphaComposite, alphaCompositeAt, paste } from "../raster.js?v=17b5fe87f1";
+import { geometry } from "../maps/geometry.js?v=17b5fe87f1";
+import { tokenCanvas, grime, size2Footprint, clipToHex } from "./kit.js?v=17b5fe87f1";
+import { groundShadow } from "./shadow.js?v=17b5fe87f1";
 
 const withShadow = (obj, cell) => groundShadow(obj, cell);                      // stood on the floor (shadow.js), not the kit's offset copy
 
@@ -149,15 +149,25 @@ function shadeField(w, h, z, colour, { gloss = 0, k = 0.75 } = {}) {
 // A plastic tarp over stacked crates: the crates' heights, smoothed and bridged into a drape, a skirt with
 // a wavy hem on the ground, hanging folds on the sides; lit, glossy, and (netted) camo on the tops.
 function tokenTarp(cell, netted = false, seed = 0) {
-  const { img, cs } = tokenCanvas(cell, [[0, 0]]), w = img.w, h = img.h, [cx, cy0] = cs[0], cy = cy0 + cell * 0.1;
-  const r = new PyRandom(920 + seed);
   const crates = [
     [[-0.32, -0.26, 0.02, 0.02, 0.24], [0.02, -0.26, 0.32, 0.02, 0.2], [-0.32, 0.02, 0.32, 0.26, 0.22], [-0.24, -0.2, 0.08, 0.0, 0.34]],
     [[-0.32, -0.24, 0.32, 0.26, 0.2], [0.0, -0.22, 0.3, 0.1, 0.33], [-0.3, 0.02, -0.02, 0.24, 0.27]],
     [[-0.3, -0.26, 0.3, 0.02, 0.26], [-0.3, 0.02, 0.3, 0.26, 0.21], [-0.2, -0.2, 0.14, 0.0, 0.36]],
     [[-0.33, -0.24, -0.02, 0.26, 0.28], [0.0, -0.24, 0.32, 0.26, 0.22], [0.04, -0.2, 0.28, 0.02, 0.32]],
   ][seed % 4];
-  const base = new Float32Array(w * h), sc = 0.86;                                // the whole stack a bit inside the hex
+  return drapeTarp(cell, [[0, 0]], crates, TARP, { netted, seed });
+}
+
+// The drape itself, for any footprint: `crates` are [x0, y0, x1, y1, height] in cells round the footprint's
+// centre; `colour` the tarp's; `sc` shrinks the whole stack toward the centre. Used by other sets too.
+export function drapeTarp(cell, fp, crates, colour, { netted = false, seed = 0, sc = 0.86, gloss = null, rseed = 920, decor = null, lift = null } = {}) {
+  // lift(z, w, h): reshape the drape's heights before it is lit (straps pulled taut over the load)
+  // decor(x, y, z, cx, cy): a colour painted onto the cloth itself (straps), lit with it; or null
+  const TARP = colour;
+  const { img, cs } = tokenCanvas(cell, fp), w = img.w, h = img.h;
+  const cx = cs.reduce((t, [x]) => t + x, 0) / cs.length, cy = cs.reduce((t, [, y]) => t + y, 0) / cs.length + cell * 0.1;
+  const r = new PyRandom(rseed + seed);
+  const base = new Float32Array(w * h);                                           // the whole stack a bit inside the hex
   for (const [a, b, c, e, hh] of crates) {
     const ht = cell * (hh * 0.85 + r.uniform(-0.012, 0.012));
     for (let y = Math.round(cy + b * sc * cell); y < Math.round(cy + e * sc * cell); y++)
@@ -201,11 +211,13 @@ function tokenTarp(cell, netted = false, seed = 0) {
     leaf = nl.data;
   }
   const tone = fblur(Float32Array.from({ length: w * h }, () => r.random()), w, h, cell * 0.06);
+  if (lift) lift(z, w, h);
   const lay = shadeField(w, h, z, (p) => {
+    if (decor) { const dc = decor(p % w, Math.floor(p / w), z[p], cx, cy); if (dc) return dc; }
     if (leaf && leaf[p * 4 + 3] && z[p] > ht * 0.55) return [leaf[p * 4], leaf[p * 4 + 1], leaf[p * 4 + 2]];
     const t = 1.08 + (tone[p] - 0.5) * 0.5;
     return [TARP[0] * t * 1.06, TARP[1] * t, TARP[2] * t];
-  }, { gloss: netted ? 0.35 : 0.75, k: 0.6 });
+  }, { gloss: gloss ?? (netted ? 0.35 : 0.75), k: 0.6 });
   return withShadow(lay, cell);
 }
 

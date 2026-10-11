@@ -10,6 +10,7 @@ export const SETS = {
   depot: { name: "Depot", colour: "#4fa3bf" },
   annex: { name: "Generator Annex", colour: "#5cbf6a" },
   silos: { name: "Ballistic Silos", colour: "#6f86d8" },
+  freight: { name: "Freight Tunnel", colour: "#c9a24a" },
 };
 
 const RULES = [
@@ -130,10 +131,41 @@ const RULES = [
   [/^bs_drums_v(\d)$/, "Blue drums", "Cover", "Two or three blue steel drums."],
   [/^bs_container_3hex$/, "Navy container", "Cover", "A dark navy container with a worn orange band. Three hexes in a row."],
   [/^bs_railing$/, "Blue railing", "Wall", "The Silos' blue railing, running east-west; tiles along a row."],
+  [/^fl_deck_v(\d)$/, "Wagon deck", "Raised ground", "One hex of a freight wagon's deck: grimy, oily diamond-tread steel. Neighbouring tiles join into one surface, with lashing rails along the rows."],
+  [/^fl_deck_side_n$/, "Wagon deck, north side", "Raised ground", "A deck tile cut flat along the wagon's north side, with a heavy iron girder banded with hazard stripes and brass rivets."],
+  [/^fl_deck_side_s$/, "Wagon deck, south side", "Raised ground", "The same for the wagon's south side. Lit like the rest, so no rotating."],
+  [/^fl_deck_end_w$/, "Wagon deck, west end", "Raised ground", "The striped end beam on the west side. For the rows that sit back at the west end (the odd rows of a five-row wagon)."],
+  [/^fl_deck_end_e$/, "Wagon deck, east end", "Raised ground", "The striped end beam on the east side. For the rows that sit back at the east end (the even rows)."],
+  [/^fl_deck_end_point_w$/, "Wagon deck, west end (pointed)", "Raised ground", "The end beam on the three west sides: for the rows that stand out at the west end (the even rows)."],
+  [/^fl_deck_end_point_e$/, "Wagon deck, east end (pointed)", "Raised ground", "The end beam on the three east sides: for the rows that stand out at the east end (the odd rows)."],
+  [/^fl_deck_corner_nw$/, "Wagon deck, north-west corner", "Raised ground", "The north side and the pointed west end."],
+  [/^fl_deck_corner_ne$/, "Wagon deck, north-east corner", "Raised ground", "The north side and a plain east end."],
+  [/^fl_deck_corner_sw$/, "Wagon deck, south-west corner", "Raised ground", "The south side and the pointed west end."],
+  [/^fl_deck_corner_se$/, "Wagon deck, south-east corner", "Raised ground", "The south side and a plain east end."],
+  [/^fl_deck_holed$/, "Wagon deck, destroyed", "Hazard", "A hole torn through the deck plate down to the track bed: petalled, scorched edges, two broken ribs glowing where they snapped, smoke rising. Swap it in when a tile is destroyed."],
+  [/^fl_container_stack_2hex$/, "Stacked containers", "Obstruction", "Two shipping containers stacked: tall enough to block line of sight. Two hexes side by side."],
+  [/^fl_container_2hex_v(\d)$/, "Shipping container", "Cover", "A corrugated container with a herringbone roof, dents, rust streaks, locking bars and an owner code: red, blue, green or yellow. Two hexes side by side."],
+  [/^fl_crate_v(\d)$/, "Banded crate", "Cover", "A ribbed steel crate with corner guards, a latch and a stencilled code, or two side by side."],
+  [/^fl_coil_v(\d)$/, "Steel coil", "Cover", "A steel coil standing on its end in a steel cradle, banded, with a mill tag."],
+  [/^fl_tarp_2hex$/, "Tarped load (long)", "Soft cover", "Boxes under a strapped tarp. Two hexes side by side."],
+  [/^fl_tarp_v(\d)$/, "Tarped load", "Soft cover", "Boxes under a strapped tarp: olive or tan."],
+  [/^fl_machine_size2$/, "Tarped machine", "Cover", "A big machine under a slate tarp, strapped down. Size 2."],
+  [/^fl_bulk_bags_v(\d)$/, "Bulk bags", "Soft cover", "Big woven bulk bags, square and bulging, with lifting loops and a printed panel: four, or two taller ones."],
+  [/^fl_fuel_tank_2hex$/, "Fuel tank", "Hazard", "A tank lying east-west on saddles: catwalk, fittings, ladder, red band, flammable diamonds (class 3). Two hexes side by side."],
+  [/^fl_fuel_drums_v(\d)$/, "Fuel drums", "Hazard", "Oxblood steel drums with bungs and rust at the foot, a flammable diamond on one lid."],
+  [/^fl_ordnance_v(\d)$/, "Ordnance crates", "Hazard", "Olive steel crates with an HE stencil, lot numbers and explosive placards (class 1.1)."],
+  [/^fl_reel_size2$/, "Cable reel", "Cover", "A steel cable reel lying on its flange, painted yellow: welded gussets, a bolt ring, the hub, lettering round the rim. Size 2."],
+  [/^fl_reel_size3$/, "Cable reel (large)", "Cover", "A huge steel cable reel lying on its flange, painted red, lettering round the rim. Size 3."],
+  [/^fl_coupler_open$/, "Coupling, uncoupled", "Prop", "The knuckles apart and the hoses hanging loose: swap it in when a wagon is detached."],
+  [/^fl_coupler$/, "Coupling", "Prop", "Goes in the gap hex between two wagons, on the middle row: knuckle couplers on drawbars and the air hoses."],
+  [/^fl_harness_anchor_v(\d)$/, "Harness anchor", "Prop", "A welded padeye and shackle on a yellow-and-black base: where a harness clips on. Scatter them about the deck; one, or a pair."],
+  [/^fl_harness_locker$/, "Harness locker", "Objective", "A steel locker, door open, harnesses hanging inside: where the harnesses are kept."],
+  [/^fl_low_clearance$/, "Low clearance marker", "Marker", "A weighted warning post: a striped pole, a low-clearance sign and an amber beacon. Lay it on the train the round before an overhead obstacle."],
+  [/^fl_locomotive$/, "Locomotive", "Cover", "An electric freight locomotive, nose east: nine hexes long, five rows wide. Radiator fans, hatches, the cab and a striped nose; collector shoes to the conductor rail; its west buffer beam meets the coupling in the gap."],
 ];
 
 export function describe(name) {
-  const set = name.startsWith("mb_") ? "milbay" : name.startsWith("vr_") ? "vr" : name.startsWith("tf_") ? "training" : name.startsWith("dp_") ? "depot" : name.startsWith("ga_") ? "annex" : name.startsWith("bs_") ? "silos" : "kit";
+  const set = name.startsWith("mb_") ? "milbay" : name.startsWith("vr_") ? "vr" : name.startsWith("tf_") ? "training" : name.startsWith("dp_") ? "depot" : name.startsWith("ga_") ? "annex" : name.startsWith("bs_") ? "silos" : name.startsWith("fl_") ? "freight" : "kit";
   let title = name, kind = "Prop", notes = "";
   for (const [re, t, k, n] of RULES) {
     const m = name.match(re);
@@ -145,7 +177,7 @@ export function describe(name) {
   }
   const v = name.match(/_v(\d+)$/);
   const blast = name.match(/^blast_area_(\d)$/);
-  const footprint = blast ? `Blast ${blast[1]}` : /size3/.test(name) ? "Size 3" : /size2/.test(name) ? "Size 2" : /3hex/.test(name) ? "3 hexes" : /2hex|rocket_stack/.test(name) ? "2 hexes" : "Size 1";
+  const footprint = blast ? `Blast ${blast[1]}` : /size3/.test(name) ? "Size 3" : /size2/.test(name) ? "Size 2" : /locomotive/.test(name) ? "9 x 5 hexes" : /3hex/.test(name) ? "3 hexes" : /2hex|rocket_stack/.test(name) ? "2 hexes" : "Size 1";
   return { name, set, title, variant: v ? Number(v[1]) : null, kind, notes, footprint,
     family: name.replace(/_v\d+$/, "") };
 }
@@ -156,6 +188,7 @@ export const FOOTPRINT_TEXT = {
   "Size 3": "seven hexes: one and its six neighbours",
   "2 hexes": "two hexes side by side",
   "3 hexes": "three hexes in a row, centred on the middle one",
+  "9 x 5 hexes": "nine hexes long and five rows wide, anchored on its middle hex",
   "Blast 1": "seven hexes: the target hex and its six neighbours",
   "Blast 2": "nineteen hexes: the target hex and two rings around it",
   "Blast 3": "thirty-seven hexes: the target hex and three rings around it",

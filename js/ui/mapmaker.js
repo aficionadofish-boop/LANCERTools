@@ -2,12 +2,12 @@
 // get the Roll20 base map. Drawing happens in the render worker; this page keeps an overlay of what
 // was painted, so edits show at once while the map redraws underneath.
 
-import { MapModel, key, parse, zoneKind } from "./mapmodel.js?v=0f282507bd";
-import { Renderer } from "./renderer.js?v=0f282507bd";
-import * as cache from "./rendercache.js?v=0f282507bd";
-import { STYLES } from "../maps/render.js?v=0f282507bd";
-import { CELL, SS, geometry, centre, hexPoints, imageSize, colLetter, zoneEdges } from "../maps/geometry.js?v=0f282507bd";
-import { ZONE_TINT, DEFAULT_TINT } from "../maps/common.js?v=0f282507bd";
+import { MapModel, key, parse, zoneKind } from "./mapmodel.js?v=17b5fe87f1";
+import { Renderer } from "./renderer.js?v=17b5fe87f1";
+import * as cache from "./rendercache.js?v=17b5fe87f1";
+import { STYLES } from "../maps/render.js?v=17b5fe87f1";
+import { CELL, SS, geometry, centre, hexPoints, imageSize, colLetter, zoneEdges } from "../maps/geometry.js?v=17b5fe87f1";
+import { ZONE_TINT, DEFAULT_TINT } from "../maps/common.js?v=17b5fe87f1";
 
 const $ = (id) => document.getElementById(id);
 const STORE = "lancertools.mapmaker";
@@ -341,16 +341,17 @@ async function settled() {                                   // until the drawn 
 function buildTools() {
   const box = $("tools");
   box.innerHTML = "";
+  const own = STYLES[model.style].tools || {};                // a style may rename a tool and say what it draws
   for (const t of TOOLS) {
     const b = document.createElement("button");
-    b.innerHTML = `<span class="sw" style="background:${t.colour}"></span>${t.label}`;
+    b.innerHTML = `<span class="sw" style="background:${t.colour}"></span>${(own[t.id] || {}).label || t.label}`;
     b.setAttribute("aria-pressed", String(t.id === tool));
     if (t.decal && !styleHas(t.decal)) { b.disabled = true; b.title = `Not drawn in ${STYLES[model.style].name}`; }
     b.onclick = () => { tool = t.id; trackStart = null; buildTools(); };
     box.append(b);
   }
   const t = TOOLS.find((x) => x.id === tool);
-  let hint = t.hint || "";
+  let hint = (own[t.id] || {}).hint || t.hint || "";
   if (t.terrain) hint += " " + (STYLES[model.style].terrainNote || `${STYLES[model.style].name} doesn't draw it.`);
   $("toolHint").textContent = hint + " Left-drag paints, right-drag erases. Space-drag or middle-drag pans, the wheel zooms.";
 }
