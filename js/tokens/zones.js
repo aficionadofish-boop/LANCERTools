@@ -3,10 +3,10 @@
 // group of them reads as one tinted zone; a label is the map's own plate, centred on the middle of three hexes.
 // The colours are the map's zone colours, a little stronger so they show over busy tokens.
 
-import { newImage, Draw } from "../raster.js?v=c79553d828";
-import { geometry, hexPoints } from "../maps/geometry.js?v=c79553d828";
-import { font } from "../maps/common.js?v=c79553d828";
-import { tokenCanvas } from "./kit.js?v=c79553d828";
+import { newImage, Draw } from "../raster.js?v=8dccee325e";
+import { geometry, hexPoints } from "../maps/geometry.js?v=8dccee325e";
+import { font } from "../maps/common.js?v=8dccee325e";
+import { tokenCanvas } from "./kit.js?v=8dccee325e";
 
 const ZONES = {
   deploy: { rgb: [68, 136, 255], label: "DEPLOY ZONE" },

@@ -10,11 +10,11 @@
 //
 // Every layer has its own random stream, so a slider changes only its own layer.
 
-import { NpRandom, PyRandom } from "../../rng.js?v=c79553d828";
-import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=c79553d828";
-import { centre, geometry, imageSize } from "../geometry.js?v=c79553d828";
-import { noise, decalBlast, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=c79553d828";
-import { drawAllZones } from "../common.js?v=c79553d828";
+import { NpRandom, PyRandom } from "../../rng.js?v=8dccee325e";
+import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=8dccee325e";
+import { centre, geometry, imageSize } from "../geometry.js?v=8dccee325e";
+import { noise, decalBlast, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=8dccee325e";
+import { drawAllZones } from "../common.js?v=8dccee325e";
 
 const FLOOR = [52, 54, 58];
 const FLOOR_DARK = [34, 35, 38];
@@ -61,7 +61,7 @@ function stains(img, cell, o) {
 
 // The wall area as one mask, with straight faces where whole runs of a row are wall: each wall hex
 // fills its column strip, cut at its shoulder line on any side where the neighbouring row is open.
-function wallMask([w, h], solid, data, cell) {
+export function wallMask([w, h], solid, data, cell) {
   const [sx, sy, hw, qh] = geometry(cell), m = newImage("L", w, h), d = new Draw(m), key = (c, r) => c + "," + r;
   const isSolid = (c, r) => r < 0 || r >= data.rows || solid.has(key(c, r));
   const faces = [];                                                          // [x0, x1, y, side] wall faces
