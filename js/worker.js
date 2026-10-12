@@ -4,10 +4,10 @@
 //               {id, type: "token", name}                 -> {id, file, w, h, png}
 // On failure:   {id, error}
 
-import { installText } from "./maps/text.js?v=9ea0917c06";
-import { renderBase } from "./maps/render.js?v=9ea0917c06";
-import { renderToken } from "./tokens/index.js?v=9ea0917c06";
-import { encodePNG } from "./png.js?v=9ea0917c06";
+import { installText } from "./maps/text.js?v=4f137b6395";
+import { renderBase } from "./maps/render.js?v=4f137b6395";
+import { renderToken } from "./tokens/index.js?v=4f137b6395";
+import { encodePNG } from "./png.js?v=4f137b6395";
 
 const ready = installText(new URL("../fonts/", import.meta.url).href);
 let lastMap = null;

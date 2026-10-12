@@ -14,11 +14,11 @@
 // The style is built from a theme (makeStyle): the Generator Annex (annex.js) is the same floor in green,
 // with bar fields instead of diagonal stripes and manhole lids.
 
-import { NpRandom, PyRandom } from "../../rng.js?v=9ea0917c06";
-import { newImage, Draw, alphaComposite, paste, gaussianBlur, u8 } from "../../raster.js?v=9ea0917c06";
-import { centre, imageSize, zoneEdges, hexesBox, connectedParts } from "../geometry.js?v=9ea0917c06";
-import { noise, maskOf, drawAllZones, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=9ea0917c06";
-import { maze, remains } from "../synthetik.js?v=9ea0917c06";
+import { NpRandom, PyRandom } from "../../rng.js?v=4f137b6395";
+import { newImage, cloneImage, Draw, alphaComposite, paste, gaussianBlur, u8 } from "../../raster.js?v=4f137b6395";
+import { centre, imageSize, zoneEdges, hexesBox, connectedParts } from "../geometry.js?v=4f137b6395";
+import { noise, maskOf, drawAllZones, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=4f137b6395";
+import { maze, remains } from "../synthetik.js?v=4f137b6395";
 
 // the Depot's theme; the Annex has its own (annex.js)
 export const DEPOT = {
@@ -230,7 +230,12 @@ export function makeStyle(T) {
   // --- litter: paper scraps, flecks, chips, casings, scuffed patches ---------------------------------------------
 
   function litter(img, cell, o) {
-    const { w, h } = img, area = (w * h) / (cell * cell);
+    const [haze, dust, over] = kept("litter", [img.w, img.h, cell, o.scuffs, o.paper, o.debris, o.casings], () => litterLayers(img.w, img.h, cell, o));
+    return alphaComposite(alphaComposite(alphaComposite(img, haze), dust), over);
+  }
+
+  function litterLayers(w, h, cell, o) {
+    const area = (w * h) / (cell * cell);
     const dust = newImage("RGBA", w, h), dd = new Draw(dust), rd = new PyRandom(241);
     const nd = Math.round((area / 80) * o.scuffs);
     const haze = newImage("RGBA", w, h), hd = new Draw(haze);
@@ -247,8 +252,7 @@ export function makeStyle(T) {
         dd.rectangle([x - s, y - s, x + s, y + s], { fill: [...T.stipple, 44] });
       }
     }
-    img = alphaComposite(img, gaussianBlur(haze, cell * 0.12));
-    img = alphaComposite(img, dust);
+    const hazeSoft = gaussianBlur(haze, cell * 0.12);
     const over = newImage("RGBA", w, h), d = new Draw(over);
     const layer = (n, density, seed, one) => {
       const r = new PyRandom(seed), keep = keeper(seed, density), more = extras(n, density, seed + 1000);
@@ -280,7 +284,7 @@ export function makeStyle(T) {
       const x = r.uniform(0, w), y = r.uniform(0, h), a = r.uniform(0, Math.PI), L = cell * r.uniform(0.035, 0.05);
       return () => d.line([[x, y], [x + Math.cos(a) * L, y + Math.sin(a) * L]], [230, 184, 80, 235], cw);
     });
-    return alphaComposite(img, over);
+    return [hazeSoft, dust, over];
   }
 
   // --- decals -----------------------------------------------------------------------------------------------
@@ -394,10 +398,14 @@ export function makeStyle(T) {
   }
 
   // the sunken pipe trench beyond the play area: a dark lower floor, shaded under its north and west walls,
-  // big pipes with flanges running east-west, thin pipe pairs, and a steel railing along the edge
-  function trench(img, solid, cell) {
+  // big pipes with flanges running east-west, thin pipe pairs, and a steel railing along the edge.
+  // The trench settings (all 0 by default, which draws exactly the original) break up its sameness: pit floor
+  // detail, pipe variety, cross pipes, machinery, depth and work lamps. Each has its own random stream.
+  function trench(img, solid, cell, o = {}) {
+    const vary = o.trenchVariety || 0, cross = o.trenchCross || 0, mach = o.trenchMachines || 0;
+    const lamps = o.trenchLamps || 0, depth = o.trenchDepth || 0, floorDet = o.trenchFloor || 0;
     const { w, h } = img, m = maskOf([w, h], solid.map(([c, r]) => centre(c, r, cell)), cell);
-    const low = newImage("RGBA", w, h), mott = noise(h, w, cell * 2, 261);
+    const low = newImage("RGBA", w, h), mott = kept("pitNoise", [w, h, cell], () => noise(h, w, cell * 2, 261));
     const lip = newImage("L", w, h);                                            // the open floor, shifted down-right: the walls' shadow
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) {
@@ -410,37 +418,125 @@ export function makeStyle(T) {
       const i = p * 4, v = (mott[p] - 0.5) * 10;
       low.data[i] = u8(T.pit[0] + v); low.data[i + 1] = u8(T.pit[1] + v); low.data[i + 2] = u8(T.pit[2] + v); low.data[i + 3] = 255;
     }
+    if (floorDet) pitFloor(low, m, cell, floorDet);
     paste(img, low, m);
     const pipes = newImage("RGBA", w, h);
     let d = new Draw(pipes);
-    for (const part of connectedParts(solid, cell)) {
+    const tube = (y, r, x0, x1, bright = 1, col = T.pipe) => {                  // a round pipe: shaded across, lit from the north
+      for (let k = -r; k < r; k++) {
+        const u = (k + 0.5) / r, lit = Math.sqrt(Math.max(0, 1 - u * u)) * 0.75 + (u < 0 ? -u * 0.35 : -u * 0.45) + 0.15;
+        d.line([[x0, y + k], [x1, y + k]], [0, 1, 2].map((c) => u8(col[c] + T.pipeLit[c] * lit * bright)).concat(255), 1);
+      }
+    };
+    const tubeV = (x, r, y0, y1, bright = 1, col = T.pipe) => {                 // the same running north-south, lit from the west
+      for (let k = -r; k < r; k++) {
+        const u = (k + 0.5) / r, lit = Math.sqrt(Math.max(0, 1 - u * u)) * 0.75 + (u < 0 ? -u * 0.35 : -u * 0.45) + 0.15;
+        d.line([[x + k, y0], [x + k, y1]], [0, 1, 2].map((c) => u8(col[c] + T.pipeLit[c] * lit * bright)).concat(255), 1);
+      }
+    };
+    const flangeAt = (x, y, pr, vert = false) => {
+      const fw = cell * 0.1;
+      if (!vert) {
+        for (let k = 0; k < fw; k++) d.line([[x + k, y - pr * 1.25], [x + k, y + pr * 1.25]], [0, 1, 2].map((c) => u8(T.flange[c] + (k / fw) * [30, 30, 26][c])).concat(255), 1);
+        d.rectangle([x, y - pr * 1.25, x + fw, y + pr * 1.25], { outline: [...T.flangeLine, 255], width: 2 });
+      } else {
+        for (let k = 0; k < fw; k++) d.line([[x - pr * 1.25, y + k], [x + pr * 1.25, y + k]], [0, 1, 2].map((c) => u8(T.flange[c] + (1 - k / fw) * [30, 30, 26][c])).concat(255), 1);
+        d.rectangle([x - pr * 1.25, y, x + pr * 1.25, y + fw], { outline: [...T.flangeLine, 255], width: 2 });
+      }
+    };
+    // a pipe bending down out of sight: the end rounds over and darkens as it turns away, a flange at the bend
+    const elbow = (xe, y, pr, dir, col) => {
+      for (let k = -pr; k < pr; k++) {
+        const u = (k + 0.5) / pr, hw = pr * 0.6 * Math.sqrt(Math.max(0, 1 - u * u));
+        const lit = (Math.sqrt(Math.max(0, 1 - u * u)) * 0.75 + (u < 0 ? -u * 0.35 : -u * 0.45) + 0.15) * 0.55;
+        d.line([[xe, y + k], [xe + dir * hw, y + k]], [0, 1, 2].map((c) => u8(col[c] * 0.8 + T.pipeLit[c] * lit)).concat(255), 1);
+      }
+      d.ellipse([xe + dir * pr * 0.1 - pr * 0.18, y - pr * 0.5, xe + dir * pr * 0.1 + pr * 0.18, y + pr * 0.9], { fill: [...T.pitShadow, 120] });
+      flangeAt(dir > 0 ? xe - cell * 0.1 : xe, y, pr);
+    };
+    // a valve body (a handwheel on top) or a pump (vent slats) set in the run, the pipe entering both sides
+    const inline = (gx0, gx1, y, pr, kind) => {
+      const x0 = gx0 - cell * 0.06, x1 = gx1 + cell * 0.06, hh = pr * 1.45, face = cell * 0.07;
+      const body = T.flange.map((c) => c * (kind === "pump" ? 0.9 : 1.05)), top = body.map((c) => Math.min(255, c * 1.3)), side = body.map((c) => c * 0.55);
+      d.rectangle([x0 + cell * 0.04, y - hh + cell * 0.06, x1 + cell * 0.06, y + hh + face + cell * 0.06], { fill: [...T.pitShadow, 190] });
+      d.rectangle([x0, y + hh, x1, y + hh + face], { fill: [...side, 255] });
+      d.rectangle([x0, y - hh, x1, y + hh], { fill: [...top, 255], outline: [...T.flangeLine, 255], width: 2 });
+      const cx = (x0 + x1) / 2;
+      if (kind === "valve") {
+        const R = Math.min(hh * 0.85, (x1 - x0) * 0.42), lw = Math.max(2, Math.trunc(cell * 0.02));
+        d.ellipse([cx - R + 2, y - R + 3, cx + R + 2, y + R + 3], { outline: [...T.pitShadow, 200], width: lw });
+        d.ellipse([cx - R, y - R, cx + R, y + R], { outline: [196, 64, 48, 255], width: lw });            // a red handwheel
+        for (let a = 0; a < 3; a++) { const t = (a * Math.PI) / 3; d.line([[cx - Math.cos(t) * R, y - Math.sin(t) * R], [cx + Math.cos(t) * R, y + Math.sin(t) * R]], [150, 52, 40, 255], Math.max(1, lw - 1)); }
+        d.ellipse([cx - R * 0.2, y - R * 0.2, cx + R * 0.2, y + R * 0.2], { fill: [...side, 255] });
+      } else {
+        for (let x = x0 + cell * 0.06; x < x1 - cell * 0.04; x += cell * 0.055) d.line([[x, y - hh * 0.7], [x, y + hh * 0.7]], [...side, 255], 2);
+        d.ellipse([x1 - cell * 0.09, y + hh + face * 0.3, x1 - cell * 0.05, y + hh + face * 0.7], { fill: [90, 255, 120, 255] });   // its run light
+      }
+    };
+    const vr = new PyRandom(281), parts = connectedParts(solid, cell);
+    for (const part of parts) {
       const ys = part.map(([c, r]) => centre(c, r, cell)[1]), xs = part.map(([c, r]) => centre(c, r, cell)[0]);
       const top = Math.min(...ys) - cell * 0.3, bot = Math.max(...ys) + cell * 0.3, left = Math.min(...xs) - cell, right = Math.max(...xs) + cell;
-      const pr = cell * 0.2;
-      const tube = (y, r, x0, x1, bright = 1) => {                              // a round pipe: shaded across, lit from the north
-        for (let k = -r; k < r; k++) {
-          const u = (k + 0.5) / r, lit = Math.sqrt(Math.max(0, 1 - u * u)) * 0.75 + (u < 0 ? -u * 0.35 : -u * 0.45) + 0.15;
-          d.line([[x0, y + k], [x1, y + k]], [0, 1, 2].map((c) => u8(T.pipe[c] + T.pipeLit[c] * lit * bright)).concat(255), 1);
+      const pr0 = cell * 0.2;
+      for (let y0 = top + cell * 0.6; y0 < bot - cell * 0.3; y0 += cell * 1.3) {   // big pipes, east-west
+        // variety: each row its own size, offset and tint, sometimes a second big pipe, runs broken into lengths
+        const k1 = vr.uniform(0.55, 1.45), k2 = vr.uniform(-0.35, 0.35), k3 = vr.uniform(0.75, 1.3), twin = vr.random() < 0.3, thin = vr.random() < 0.65;
+        const breaks = [], gaps = [];                                          // runs wall to wall, broken only by a reason
+        for (let x = left; x < right;) {
+          let x1 = x + cell * vr.uniform(1.8, 4.6);
+          if (x1 > right - cell * 1.2) x1 = right;
+          breaks.push([x, x1]);
+          if (x1 >= right) break;
+          const g = cell * vr.uniform(0.45, 0.85), kind = vr.random() < 0.6 ? (vr.random() < 0.5 ? "valve" : "pump") : "dive";
+          gaps.push([x1, x1 + g, kind]);
+          x = x1 + g;
         }
-      };
-      for (let y = top + cell * 0.6; y < bot - cell * 0.3; y += cell * 1.3) {   // big pipes, east-west
-        d.rectangle([left, y + pr * 0.4, right, y + pr * 1.5], { fill: [...T.pitShadow, 180] });   // shadow under it
-        tube(y, pr, left, right);
-        for (let x = left + cell * 0.8; x < right; x += cell * 2.4) {           // flanges
-          for (let k = 0; k < cell * 0.1; k++) d.line([[x + k, y - pr * 1.25], [x + k, y + pr * 1.25]], [0, 1, 2].map((c) => u8(T.flange[c] + (k / (cell * 0.1)) * [30, 30, 26][c])).concat(255), 1);
-          d.rectangle([x, y - pr * 1.25, x + cell * 0.1, y + pr * 1.25], { outline: [...T.flangeLine, 255], width: 2 });
+        const pr = pr0 * lerp(1, k1, vary), y = y0 + k2 * cell * vary, col = T.pipe.map((c) => c * lerp(1, k3, vary));
+        const runs = vary > 0.5 ? breaks : [[left, right]];
+        for (const [x0, x1] of runs) {
+          d.rectangle([x0, y + pr * 0.4, x1, y + pr * 1.5], { fill: [...T.pitShadow, 180] });   // shadow under it
+          tube(y, pr, x0, x1, 1, col);
+          if (runs.length > 1) for (const [gx0, gx1, kind] of gaps) if (kind === "dive") {   // both ends bend down into the pit floor
+            if (Math.abs(gx0 - x1) < 1) elbow(x1, y, pr, 1, col);
+            if (Math.abs(gx1 - x0) < 1) elbow(x0, y, pr, -1, col);
+          }
+          const fstep = cell * lerp(2.4, vr.uniform(1.2, 3.2), vary);
+          for (let x = x0 + cell * lerp(0.8, vr.uniform(0.3, 1.2), vary); x < x1; x += fstep) flangeAt(x, y, pr);
         }
-        const ty = y + cell * 0.52;                                             // a thin pipe pair beside it
-        for (const oy of [0, cell * 0.1]) tube(ty + oy, Math.max(2, Math.trunc(cell * 0.03)), left, right, 0.8);
+        if (runs.length > 1) for (const [gx0, gx1, kind] of gaps) if (kind !== "dive") inline(gx0, gx1, y, pr, kind);
+        if (twin && vary) { const ty = y - pr * 2.6 * vary; tube(ty, pr * 0.7, left, right, 0.9, col.map((c) => c * 0.9)); }
+        if (!vary || thin) {
+          const ty = y + cell * 0.52 * lerp(1, k1 * 0.9, vary);                    // a thin pipe pair beside it
+          for (const oy of [0, cell * 0.1]) tube(ty + oy, Math.max(2, Math.trunc(cell * 0.03)), left, right, 0.8);
+        }
+      }
+      if (cross) {                                                              // north-south pipes over the others
+        const cr = new PyRandom(291 + part.length), n = Math.round(((right - left) / (cell * 4)) * cross);
+        for (let i = 0; i < n; i++) {
+          const x = cr.uniform(left + cell, right - cell), r = cell * cr.uniform(0.09, 0.17), y0 = cr.uniform(top, top + cell), y1 = cr.uniform(bot - cell, bot);
+          d.rectangle([x + r * 0.4, y0, x + r * 1.6, y1], { fill: [...T.pitShadow, 170] });
+          tubeV(x, r, y0, y1, 1.05, T.pipe.map((c) => c * 1.1));
+          for (let y = y0 + cell * cr.uniform(0.3, 1); y < y1; y += cell * cr.uniform(1.5, 3)) flangeAt(x, y, r, true);
+        }
       }
     }
     for (let p = 0; p < w * h; p++) if (!m.data[p]) pipes.data[p * 4 + 3] = 0;     // the pipes run into the walls
     img = alphaComposite(img, pipes);
+    if (mach) img = machinery(img, m, solid, cell, mach);
     for (let p = 0; p < w * h; p++) {                                           // the walls' shadow over floor and pipes
       if (!m.data[p]) continue;
       const k = 1 - (shade.data[p] / 255) * 0.6;
       for (let c = 0; c < 3; c++) img.data[p * 4 + c] = u8(img.data[p * 4 + c] * k);
     }
+    if (depth) {                                                                // deeper in, darker: far from the open floor the pit falls away
+      const near = gaussianBlur(lip, cell * 1.4);
+      for (let p = 0; p < w * h; p++) {
+        if (!m.data[p]) continue;
+        const k = 1 - Math.min(0.85, depth * 0.6 * (1 - Math.min(1, near.data[p] / 110)));
+        for (let c = 0; c < 3; c++) img.data[p * 4 + c] = u8(img.data[p * 4 + c] * k);
+      }
+    }
+    if (lamps) img = workLamps(img, m, cell, lamps);
     d = new Draw(img);
     const rail = [...T.rail, 255], dark = [...T.railDark, 255], lw = Math.max(3, Math.trunc(cell * 0.03));
     for (const [a, b] of zoneEdges(solid, cell)) {                             // the railing, on the edge facing open floor
@@ -463,6 +559,89 @@ export function makeStyle(T) {
     return img;
   }
 
+  // the pit floor: grating panels, cable runs snaking along it, dark puddles with a glint
+  function pitFloor(low, m, cell, amt) {
+    const { w, h } = low, d = new Draw(low), r = new PyRandom(301), P = cell * 0.62;
+    const line = [...T.pit.map((c) => c * 0.55), 255], barLit = [...T.pit.map((c) => Math.min(255, c * 1.35)), 255];
+    const keepG = keeper(301, amt);
+    let i = 0;
+    for (let y = 0; y < h; y += P) for (let x = (Math.round(y / P) % 2) * P * 0.5; x < w; x += P) {   // grating panels in two patterns
+      if (!keepG(i++)) continue;
+      const my = Math.min(h - 1, Math.trunc(y + P / 2)), mx = Math.min(w - 1, Math.trunc(x + P / 2));
+      if (!m.data[my * w + mx]) continue;
+      d.rectangle([x + 2, y + 2, x + P - 2, y + P - 2], { outline: line, width: 2 });
+      if ((Math.floor(x / P) + Math.floor(y / P)) % 3 === 0) for (let k = x + P * 0.15; k < x + P - 4; k += P * 0.14) d.line([[k, y + 5], [k, y + P - 5]], line, 2);
+      else for (let k = y + P * 0.2; k < y + P - 4; k += P * 0.2) { d.line([[x + 5, k], [x + P - 5, k]], line, 2); d.line([[x + 5, k - 2], [x + P - 5, k - 2]], barLit, 1); }
+    }
+    const n = Math.round((w * h) / (cell * cell) / 6 * amt);
+    for (let k = 0; k < n; k++) {                                              // cable runs
+      let x = r.uniform(0, w), y = r.uniform(0, h), a = r.choice([0, Math.PI]) + r.uniform(-0.3, 0.3);
+      const pts = [[x, y]];
+      for (let s = 0; s < cell * r.uniform(2, 5); s += cell * 0.1) { a += r.uniform(-0.2, 0.2); x += Math.cos(a) * cell * 0.1; y += Math.sin(a) * cell * 0.1; pts.push([x, y]); }
+      const col = r.choice([[16, 16, 18], [60, 24, 20], [24, 30, 20], [70, 60, 20]]);
+      d.line(pts, [...col, 255], Math.max(3, Math.trunc(cell * 0.025)));
+      d.line(pts.map(([px, py]) => [px - 1, py - 1]), [...col.map((c) => c + 40), 255], 1);
+    }
+    for (let k = 0; k < n; k++) {                                              // puddles
+      const x = r.uniform(0, w), y = r.uniform(0, h), rx = cell * r.uniform(0.2, 0.6), ry = rx * r.uniform(0.4, 0.7);
+      d.ellipse([x - rx, y - ry, x + rx, y + ry], { fill: [...T.pit.map((c) => c * 0.45), 255] });
+      d.ellipse([x - rx * 0.5, y - ry * 0.6, x + rx * 0.1, y - ry * 0.3], { fill: [...T.pit.map((c) => Math.min(255, c * 1.6)), 120] });
+    }
+  }
+
+  // machinery standing in the pit: pumps, tanks and junction boxes over the pipes, each with a lit top, a
+  // dark south face, vents or a hatch, bolts, a hazard edge and an indicator light
+  function machinery(img, m, solid, cell, amt) {
+    const { w, h } = img, over = newImage("RGBA", w, h), d = new Draw(over), r = new PyRandom(311);
+    const spots = solid.filter(() => r.random() < 0.12 * amt);
+    for (const [c, rr] of spots) {
+      const [cx, cy] = centre(c, rr, cell), kind = r.randint(0, 2), bw = cell * r.uniform(0.45, 0.8), bh = cell * r.uniform(0.35, 0.6), H = cell * r.uniform(0.12, 0.25);
+      const body = T.flange.map((v) => v * r.uniform(0.8, 1.15)), topC = body.map((v) => Math.min(255, v * 1.3)), side = body.map((v) => v * 0.55);
+      d.rectangle([cx - bw / 2 + cell * 0.06, cy - bh / 2 + cell * 0.1, cx + bw / 2 + cell * 0.1, cy + bh / 2 + H + cell * 0.1], { fill: [...T.pitShadow, 200] });   // shadow
+      if (kind === 2) {                                                        // a tank: a lit disc on a dark drum
+        const R = Math.min(bw, bh) * 0.6;
+        d.rectangle([cx - R, cy, cx + R, cy + H], { fill: [...side, 255] });
+        d.ellipse([cx - R, cy + H - R * 0.5, cx + R, cy + H + R * 0.5], { fill: [...side, 255] });
+        d.ellipse([cx - R, cy - R * 0.5, cx + R, cy + R * 0.5], { fill: [...topC, 255], outline: [...T.flangeLine, 255], width: 2 });
+        d.ellipse([cx - R * 0.3, cy - R * 0.18, cx + R * 0.3, cy + R * 0.18], { outline: [...body, 255], width: 2 });
+      } else {
+        d.rectangle([cx - bw / 2, cy + bh / 2, cx + bw / 2, cy + bh / 2 + H], { fill: [...side, 255] });   // south face
+        d.rectangle([cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2], { fill: [...topC, 255], outline: [...T.flangeLine, 255], width: 2 });
+        if (kind === 0) for (let x = cx - bw * 0.35; x < cx + bw * 0.35; x += cell * 0.06) d.line([[x, cy - bh * 0.3], [x, cy + bh * 0.3]], [...side, 255], 2);   // vents
+        else { d.rectangle([cx - bw * 0.3, cy - bh * 0.3, cx + bw * 0.3, cy + bh * 0.3], { outline: [...side, 255], width: 2 }); d.line([[cx - bw / 2, cy + bh / 2 + 2], [cx + bw / 2, cy + bh / 2 + 2]], [196, 160, 50, 255], 3); }
+        for (const [bx, by] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) d.ellipse([cx + bx * bw * 0.42 - 2, cy + by * bh * 0.4 - 2, cx + bx * bw * 0.42 + 2, cy + by * bh * 0.4 + 2], { fill: [...side, 255] });
+      }
+      const led = r.choice([[90, 255, 120], [255, 170, 60], [255, 70, 50]]);
+      d.ellipse([cx + bw * 0.3 - 3, cy + bh / 2 + H * 0.4 - 3, cx + bw * 0.3 + 3, cy + bh / 2 + H * 0.4 + 3], { fill: [...led, 255] });
+    }
+    for (let p = 0; p < w * h; p++) if (!m.data[p]) over.data[p * 4 + 3] = 0;
+    return alphaComposite(img, over);
+  }
+
+  // work lamps down in the pit: a small bright fitting and a soft pool of light round it
+  function workLamps(img, m, cell, amt) {
+    const { w, h } = img, glow = newImage("L", w, h), gd = new Draw(glow), d = new Draw(img), r = new PyRandom(321);
+    const col = T.lamp || [255, 214, 150], n = Math.round((w * h) / (cell * cell) / 10 * amt), pts = [];
+    for (let i = 0; i < n * 6 && pts.length < n; i++) {
+      const x = r.uniform(0, w), y = r.uniform(0, h);
+      if (!m.data[Math.trunc(y) * w + Math.trunc(x)]) continue;
+      pts.push([x, y]);
+      gd.ellipse([x - cell * 0.9, y - cell * 0.6, x + cell * 0.9, y + cell * 0.8], { fill: 150 });
+      gd.ellipse([x - cell * 0.3, y - cell * 0.2, x + cell * 0.3, y + cell * 0.3], { fill: 255 });
+    }
+    const soft = gaussianBlur(glow, cell * 0.3);
+    for (let p = 0; p < w * h; p++) {
+      if (!m.data[p] || !soft.data[p]) continue;
+      const a = soft.data[p] / 255;
+      for (let c = 0; c < 3; c++) img.data[p * 4 + c] = u8(img.data[p * 4 + c] * (1 + a * 0.9) + col[c] * a * 0.12);
+    }
+    for (const [x, y] of pts) {
+      d.rectangle([x - cell * 0.07, y - cell * 0.035, x + cell * 0.07, y + cell * 0.035], { fill: [24, 24, 26, 255] });
+      d.rectangle([x - cell * 0.05, y - cell * 0.018, x + cell * 0.05, y + cell * 0.018], { fill: [...col, 255] });
+    }
+    return img;
+  }
+
   function nearestSolid(solid, x, y, cell) {
     let best = solid[0], bd = Infinity;
     for (const s of solid) { const [cx, cy] = centre(s[0], s[1], cell), dd = (cx - x) ** 2 + (cy - y) ** 2; if (dd < bd) { bd = dd; best = s; } }
@@ -471,7 +650,7 @@ export function makeStyle(T) {
 
   // cold fog: dark drifting patches, a pale mist here and there, and a strong vignette
   function atmosphere(img, cell, o) {
-    const { w, h } = img, cloud = noise(h, w, cell * 5, 271), veil = noise(h, w, cell * 2.2, 272), mist = noise(h, w, cell * 3.5, 273);
+    const { w, h } = img, [cloud, veil, mist] = kept("fog", [w, h, cell], () => [noise(h, w, cell * 5, 271), noise(h, w, cell * 2.2, 272), noise(h, w, cell * 3.5, 273)]);
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) {
         const p = y * w + x, i = p * 4;
@@ -505,19 +684,41 @@ export function makeStyle(T) {
     { id: "fog", label: "Fog", group: "Atmosphere", type: "range", min: 0, max: 2, step: 0.05, default: 1 },
     { id: "vignette", label: "Vignette", group: "Atmosphere", type: "range", min: 0, max: 2, step: 0.05, default: 1 },
     ...(T.settings || []),
+    { id: "trenchFloor", label: "Pit floor detail", group: "Solid structure", type: "range", min: 0, max: 1, step: 0.05, default: 0 },
+    { id: "trenchVariety", label: "Pipe variety", group: "Solid structure", type: "range", min: 0, max: 1, step: 0.05, default: 0 },
+    { id: "trenchCross", label: "Cross pipes", group: "Solid structure", type: "range", min: 0, max: 2, step: 0.05, default: 0 },
+    { id: "trenchMachines", label: "Machinery", group: "Solid structure", type: "range", min: 0, max: 2, step: 0.05, default: 0 },
+    { id: "trenchDepth", label: "Pit depth (darker inward)", group: "Solid structure", type: "range", min: 0, max: 1.5, step: 0.05, default: 0 },
+    { id: "trenchLamps", label: "Work lamps", group: "Solid structure", type: "range", min: 0, max: 2, step: 0.05, default: 0 },
     ...ZONE_SETTINGS,
   ].filter((st) => st.id !== "maze" || T.mazeAlpha);
+
+  // Kept between renders in the same worker (the Map Maker's): the layers an edit of decals or solid
+  // structure can't change. One entry per layer, keyed by the map size and the settings it depends on, so
+  // the pixels are exactly those of a full redraw. The floor with its paint is most of the time.
+  const store = {};
+  function kept(name, key, make) {
+    const k = JSON.stringify(key);
+    if (store[name]?.k !== k) { store[name] = null; store[name] = { k, v: make() }; }
+    return store[name].v;
+  }
+  const LATER = new Set(["paper", "debris", "casings", "scuffs", "remains", "fog", "vignette", "zones", "labels",
+    "trenchFloor", "trenchVariety", "trenchCross", "trenchMachines", "trenchDepth", "trenchLamps"]);
 
   function render(data, cell, opts = {}) {
     const o = withDefaults(settings, opts);
     const [w, h] = imageSize(data.cols, data.rows, cell);
     const zones = data.zones || {};
-    let img = ground([w, h], cell, o);
-    if (T.mazeAlpha) img = maze(img, cell, o.maze, PALE, T.mazeAlpha);
-    img = paint(img, cell, o);
-    img = pads(img, cell, o);
-    img = grilles(img, cell, o);
-    if (T.settings?.some((st) => st.id === "manholes")) img = manholes(img, cell, o);
+    const base = kept("base", [w, h, cell, Object.entries(o).filter(([k]) => !LATER.has(k))], () => {
+      let im = ground([w, h], cell, o);
+      if (T.mazeAlpha) im = maze(im, cell, o.maze, PALE, T.mazeAlpha);
+      im = paint(im, cell, o);
+      im = pads(im, cell, o);
+      im = grilles(im, cell, o);
+      if (T.settings?.some((st) => st.id === "manholes")) im = manholes(im, cell, o);
+      return im;
+    });
+    let img = cloneImage(base);
     const blasts = [];
     (data.decals || []).forEach((dec) => {
       const kind = dec.type, hexes = dec.hexes || (dec.zone && zones[dec.zone] ? zones[dec.zone].hexes : []);
@@ -530,7 +731,7 @@ export function makeStyle(T) {
     img = remains(img, cell, o.remains, REMAINS, blasts);
     img = litter(img, cell, o);
     const solid = Object.entries(data.terrain || {}).filter(([, v]) => v === "obstruction").map(([k]) => k.split(",").map(Number));
-    if (solid.length) img = trench(img, solid, cell);
+    if (solid.length) img = trench(img, solid, cell, o);
     img = atmosphere(img, cell, o);
     return drawAllZones(img, zones, cell, o);
   }

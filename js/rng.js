@@ -3,7 +3,7 @@
 //   PyRandom  = random.Random(seed)            (MT19937: random, uniform, randint, choice)
 //   NpRandom  = numpy.random.default_rng(seed) (SeedSequence + PCG64: random, uniform, normal)
 
-import { KI, WI, FI, NOR_R, NOR_INV_R } from "./ziggurat.js?v=9ea0917c06";
+import { KI, WI, FI, NOR_R, NOR_INV_R } from "./ziggurat.js?v=4f137b6395";
 
 // --- random.Random: MT19937 -------------------------------------------------------------------
 

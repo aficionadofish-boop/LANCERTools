@@ -1,9 +1,9 @@
 // What the Synthetik styles share (Training Floor, Depot): the floor's maze pattern and the robot
 // remains. Colours come from the style, so each level keeps its own paint and oil.
 
-import { PyRandom } from "../rng.js?v=9ea0917c06";
-import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../raster.js?v=9ea0917c06";
-import { noise } from "./common.js?v=9ea0917c06";
+import { PyRandom } from "../rng.js?v=4f137b6395";
+import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../raster.js?v=4f137b6395";
+import { noise } from "./common.js?v=4f137b6395";
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -64,6 +64,25 @@ export function maze(img, cell, amount, rgb, alpha = 34) {
 // The splats are drawn as masks (body, core), then given torn edges and a gritty inside with noise;
 // the shards and chunks go on last. `pal` = { oil, core, halo, haloAlpha, shards, chunks } (colours;
 // shards and chunks as [r, g, b, a]). `density` scales the scattered splats; focusHexes get a big one.
+let remainsNoise = null;                               // kept between renders: the same map size gives the same fields
+
+// gaussianBlur of an L image, worked out only round the part that isn't zero. The crop reaches past the box
+// blur's three passes, and outside it everything is zero either way, so the result is exactly the full blur.
+function blurNear(im, radius) {
+  const { w, h, data } = im;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (data[y * w + x]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; y1 = y; }
+  const out = newImage("L", w, h);
+  if (x1 < 0) return out;
+  const pad = 3 * (Math.ceil(radius) + 2) + 4;
+  x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
+  const cw = x1 - x0 + 1, ch = y1 - y0 + 1, crop = newImage("L", cw, ch);
+  for (let y = 0; y < ch; y++) crop.data.set(data.subarray((y0 + y) * w + x0, (y0 + y) * w + x1 + 1), y * cw);
+  const bl = gaussianBlur(crop, radius).data;
+  for (let y = 0; y < ch; y++) out.data.set(bl.subarray(y * cw, (y + 1) * cw), (y0 + y) * w + x0);
+  return out;
+}
+
 export function remains(img, cell, density, pal, focusHexes = []) {
   const { w, h } = img, r = new PyRandom(131), area = (w * h) / (cell * cell);
   const spots = [];
@@ -93,8 +112,10 @@ export function remains(img, cell, density, pal, focusHexes = []) {
       kd.polygon(q, r.choice(pal.chunks));
     }
   }
-  const soft = gaussianBlur(body, cell * 0.016), halo = gaussianBlur(body, cell * 0.1), coreSoft = gaussianBlur(core, cell * 0.05);
-  const rough = noise(h, w, cell * 0.12, 132), grit = noise(h, w, cell * 0.05, 133);
+  const soft = blurNear(body, cell * 0.016), halo = blurNear(body, cell * 0.1), coreSoft = blurNear(core, cell * 0.05);
+  const key = [w, h, cell].join(",");
+  if (remainsNoise?.key !== key) { remainsNoise = null; remainsNoise = { key, rough: noise(h, w, cell * 0.12, 132), grit: noise(h, w, cell * 0.05, 133) }; }
+  const { rough, grit } = remainsNoise;
   const wet = newImage("RGBA", w, h), over = newImage("RGBA", w, h);
   for (let p = 0; p < w * h; p++) {
     const i = p * 4;

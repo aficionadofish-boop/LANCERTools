@@ -6,13 +6,13 @@
 //
 // Drawn with the Depot's tools (tokens/depot.js): boxes flat, round parts ray-traced.
 
-import { PyRandom } from "../rng.js?v=9ea0917c06";
-import { alphaCompositeAt, Draw } from "../raster.js?v=9ea0917c06";
-import { grime, size2Footprint } from "./kit.js?v=9ea0917c06";
-import { groundShadow } from "./shadow.js?v=9ea0917c06";
+import { PyRandom } from "../rng.js?v=4f137b6395";
+import { alphaCompositeAt, Draw } from "../raster.js?v=4f137b6395";
+import { grime, size2Footprint } from "./kit.js?v=4f137b6395";
+import { groundShadow } from "./shadow.js?v=4f137b6395";
 
 const withShadow = (obj, cell) => groundShadow(obj, cell);                      // stood on the floor (shadow.js), not the kit's offset copy
-import { layerFor, centroid, row2, row3, box, chips, trace, cylinder, onCyl, mottle, screen, sh, A, tokenRailing, crate } from "./depot.js?v=9ea0917c06";
+import { layerFor, centroid, row2, row3, box, chips, trace, cylinder, onCyl, mottle, screen, sh, A, tokenRailing, crate } from "./depot.js?v=4f137b6395";
 
 const T = Math.trunc;
 const DARK = [42, 48, 34], DARK_SIDE = [32, 38, 28], RIB = [24, 28, 20];

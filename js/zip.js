@@ -1,7 +1,7 @@
 // A ZIP of files, stored uncompressed (PNGs are compressed already).
 // zipBlob([{name, data: Uint8Array}]) -> Blob
 
-import { crc32 } from "./png.js?v=9ea0917c06";
+import { crc32 } from "./png.js?v=4f137b6395";
 
 export function zipBlob(files) {
   const enc = new TextEncoder(), parts = [], central = [];
