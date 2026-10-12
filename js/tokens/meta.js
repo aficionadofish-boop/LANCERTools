@@ -11,6 +11,7 @@ export const SETS = {
   annex: { name: "Generator Annex", colour: "#5cbf6a" },
   silos: { name: "Ballistic Silos", colour: "#6f86d8" },
   freight: { name: "Freight Tunnel", colour: "#c9a24a" },
+  jungle: { name: "Overgrown Jungle", colour: "#5fbf8f" },
 };
 
 const RULES = [
@@ -133,6 +134,20 @@ const RULES = [
   [/^bs_drums_v(\d)$/, "Blue drums", "Cover", "Two or three blue steel drums."],
   [/^bs_container_3hex$/, "Navy container", "Cover", "A dark navy container with a worn orange band. Three hexes in a row."],
   [/^bs_railing$/, "Blue railing", "Wall", "The Silos' blue railing, running east-west; tiles along a row."],
+  [/^jg_tree_/, "Giant tree", "Obstruction", "A giant trunk rising out of sight, buttress roots snaking over the floor, moss, ferns at its foot. Blocks line of sight."],
+  [/^jg_log_/, "Fallen log", "Cover", "A rotting log with moss along the top, bracket fungus on its flank and a hollow broken end."],
+  [/^jg_thicket_/, "Thicket", "Soft cover", "A dense bush of broad leaves."],
+  [/^jg_fungus_plain_/, "Giant fungus", "Cover", "A cluster of giant mushroom caps: tan and rust, pale spots."],
+  [/^jg_fungus_/, "Glowing fungus", "Cover", "A cluster of giant mushroom caps, dark teal and violet, their spots and rims glowing."],
+  [/^jg_pods_plain_/, "Seed pods", "Hazard", "Swollen waxy seed pods on a knot of roots."],
+  [/^jg_pods_/, "Glowing pods", "Hazard", "Swollen translucent pods on a knot of roots, glowing from inside, dark veins."],
+  [/^jg_flower_plain_/, "Giant flower", "Prop", "A giant rafflesia-like flower, open: brick-red petals with pale warts round a dark maw."],
+  [/^jg_flower_/, "Glowing flower", "Hazard", "A giant open flower: petals with glowing veins and edges round a dark maw ringed with glowing stamens."],
+  [/^jg_wreck_/, "Overgrown wreck", "Cover", "A wrecked mech face down, roots grown over it, moss on everything facing up."],
+  [/^jg_planter_/, "Burst planter", "Cover", "A steel hydroponic trough split open, soil spilled out, plants growing from it."],
+  [/^jg_crate_/, "Overgrown crate", "Cover", "A cargo crate (or two) smothered in moss and vines."],
+  [/^jg_slab_2hex$/, "Fallen wall plate", "Cover", "A slab of wall plating lying tilted on its debris: seams, rivets, a torn edge, moss and vines. Two hexes side by side."],
+  [/^jg_pipe_/, "Overgrown pipe", "Cover", "A big pipe lying on the floor: flanged joints, a burst in the middle, roots wrapped over it."],
   [/^fl_deck_v(\d)$/, "Wagon deck", "Raised ground", "One hex of a freight wagon's deck: grimy, oily diamond-tread steel. Neighbouring tiles join into one surface, with lashing rails along the rows."],
   [/^fl_deck_side_n$/, "Wagon deck, north side", "Raised ground", "A deck tile cut flat along the wagon's north side, with a heavy iron girder banded with hazard stripes and brass rivets."],
   [/^fl_deck_side_s$/, "Wagon deck, south side", "Raised ground", "The same for the wagon's south side. Lit like the rest, so no rotating."],
@@ -169,7 +184,7 @@ const RULES = [
 ];
 
 export function describe(name) {
-  const set = name.startsWith("mb_") ? "milbay" : name.startsWith("vr_") ? "vr" : name.startsWith("tf_") ? "training" : name.startsWith("dp_") ? "depot" : name.startsWith("ga_") ? "annex" : name.startsWith("bs_") ? "silos" : name.startsWith("fl_") ? "freight" : "kit";
+  const set = name.startsWith("mb_") ? "milbay" : name.startsWith("vr_") ? "vr" : name.startsWith("tf_") ? "training" : name.startsWith("dp_") ? "depot" : name.startsWith("ga_") ? "annex" : name.startsWith("bs_") ? "silos" : name.startsWith("fl_") ? "freight" : name.startsWith("jg_") ? "jungle" : "kit";
   let title = name, kind = "Prop", notes = "";
   for (const [re, t, k, n] of RULES) {
     const m = name.match(re);

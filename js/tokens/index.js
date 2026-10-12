@@ -2,19 +2,20 @@
 // V-Reality set (vr_*), the Military Bay props (mb_*). renderToken() draws one at SS x and gives
 // its Roll20 size, which also goes into the file name (e.g. crate_v1_70x81.png).
 
-import { CELL, SS, pyRound } from "../maps/geometry.js?v=8dccee325e";
-import { TOKENS as KIT } from "./kit.js?v=8dccee325e";
-import { TOKENS as VR } from "./vr.js?v=8dccee325e";
-import { TOKENS as MILBAY } from "./milbay.js?v=8dccee325e";
-import { TOKENS as TRAINING } from "./training.js?v=8dccee325e";
-import { TOKENS as DEPOT } from "./depot.js?v=8dccee325e";
-import { TOKENS as ANNEX } from "./annex.js?v=8dccee325e";
-import { TOKENS as SILOS } from "./silos.js?v=8dccee325e";
-import { TOKENS as SIM } from "./sim.js?v=8dccee325e";
-import { TOKENS as FREIGHT } from "./freight.js?v=8dccee325e";
-import { TOKENS as ZONES } from "./zones.js?v=8dccee325e";
+import { CELL, SS, pyRound } from "../maps/geometry.js?v=88bb8aa766";
+import { TOKENS as KIT } from "./kit.js?v=88bb8aa766";
+import { TOKENS as VR } from "./vr.js?v=88bb8aa766";
+import { TOKENS as MILBAY } from "./milbay.js?v=88bb8aa766";
+import { TOKENS as TRAINING } from "./training.js?v=88bb8aa766";
+import { TOKENS as DEPOT } from "./depot.js?v=88bb8aa766";
+import { TOKENS as ANNEX } from "./annex.js?v=88bb8aa766";
+import { TOKENS as SILOS } from "./silos.js?v=88bb8aa766";
+import { TOKENS as SIM } from "./sim.js?v=88bb8aa766";
+import { TOKENS as FREIGHT } from "./freight.js?v=88bb8aa766";
+import { TOKENS as ZONES } from "./zones.js?v=88bb8aa766";
+import { TOKENS as JUNGLE } from "./jungle.js?v=88bb8aa766";
 
-export const TOKENS = { ...KIT, ...VR, ...MILBAY, ...TRAINING, ...DEPOT, ...ANNEX, ...SILOS, ...SIM, ...FREIGHT, ...ZONES };
+export const TOKENS = { ...KIT, ...VR, ...MILBAY, ...TRAINING, ...DEPOT, ...ANNEX, ...SILOS, ...SIM, ...FREIGHT, ...ZONES, ...JUNGLE };
 
 export function renderToken(name) {
   const fn = TOKENS[name];

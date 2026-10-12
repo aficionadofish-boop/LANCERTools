@@ -10,11 +10,11 @@
 //
 // Every layer has its own random stream, so a slider changes only its own layer.
 
-import { PyRandom } from "../../rng.js?v=8dccee325e";
-import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=8dccee325e";
-import { centre, imageSize } from "../geometry.js?v=8dccee325e";
-import { ZONE_SETTINGS, withDefaults, keeper, extras, drawAllZones } from "../common.js?v=8dccee325e";
-import { wallMask } from "./tunnel.js?v=8dccee325e";
+import { PyRandom } from "../../rng.js?v=88bb8aa766";
+import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=88bb8aa766";
+import { centre, imageSize } from "../geometry.js?v=88bb8aa766";
+import { ZONE_SETTINGS, withDefaults, keeper, extras, drawAllZones } from "../common.js?v=88bb8aa766";
+import { wallMask } from "./tunnel.js?v=88bb8aa766";
 
 const SOIL = [15, 18, 14];
 const MOSS = [30, 42, 25];
@@ -114,7 +114,7 @@ function blurL(im, radius) {
 }
 
 // a pointed leaf blade from its base (x, y), pointing at angle a: len long, wid wide at the widest
-function leafPts(x, y, a, len, wid, bulge = 0.4) {
+export function leafPts(x, y, a, len, wid, bulge = 0.4) {
   const ux = Math.cos(a), uy = Math.sin(a), nx = -uy, ny = ux, pts = [], n = 7;
   for (let i = 0; i <= n; i++) {                                          // one side, base to tip
     const t = i / n, s = Math.sin(Math.PI * Math.pow(t, bulge + 0.3)) * wid / 2;
@@ -128,7 +128,7 @@ function leafPts(x, y, a, len, wid, bulge = 0.4) {
 }
 
 // the two halves of a leaf, so one side can be lit and the other in shade
-function leafHalves(x, y, a, len, wid, bulge) {
+export function leafHalves(x, y, a, len, wid, bulge) {
   const ux = Math.cos(a), uy = Math.sin(a), nx = -uy, ny = ux, L = [[x, y]], R = [[x, y]], n = 7;
   for (let i = 1; i <= n; i++) {
     const t = i / n, s = Math.sin(Math.PI * Math.pow(t, bulge + 0.3)) * wid / 2;
@@ -284,11 +284,11 @@ function pools(img, hexes, cell, mask, glow, o) {
 
 // Two tiers of plants, each with its own soft shadow: low ferns, then taller broad leaves above them.
 // Plants don't grow on the trails and pools (`clear`) nor deep inside the bulkhead (`wall`, blurred mask).
-const lit = (nx, ny) => clamp(0.5 - (nx + ny) * 0.35);                    // light from the north-west
-const tint = (base, f) => [...base.map((v) => u8(v * f)), 255];
+export const lit = (nx, ny) => clamp(0.5 - (nx + ny) * 0.35);                    // light from the north-west
+export const tint = (base, f) => [...base.map((v) => u8(v * f)), 255];
 
 // a fern frond: a curling rib with paired leaflets shrinking toward the tip
-function fern(d, sd, x, y, a, len, curl, base, off, leaf = 0.2, sweep = 1.0, slim = 0.38) {
+export function fern(d, sd, x, y, a, len, curl, base, off, leaf = 0.2, sweep = 1.0, slim = 0.38) {
   const n = 11, step = len / n, rib = [[x, y]];
   let px = x, py = y;
   for (let i = 1; i <= n; i++) { const an = a + curl * (i / n); px += Math.cos(an) * step; py += Math.sin(an) * step; rib.push([px, py]); }
@@ -306,7 +306,7 @@ function fern(d, sd, x, y, a, len, curl, base, off, leaf = 0.2, sweep = 1.0, sli
 }
 
 // a broad leaf: two-tone halves, a pale midrib and side veins
-function broadLeaf(d, sd, x, y, a, len, wid, base, off) {
+export function broadLeaf(d, sd, x, y, a, len, wid, base, off) {
   sd.polygon(leafPts(x + off, y + off * 1.3, a, len, wid, 0.25), 255);
   const [L, R, [nx, ny]] = leafHalves(x, y, a, len, wid, 0.25), f = lit(nx, ny);
   d.polygon(L, tint(base, 0.72 + f * 0.65));

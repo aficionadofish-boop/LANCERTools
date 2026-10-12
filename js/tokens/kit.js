@@ -3,11 +3,11 @@
 // Roll20 snaps a token by the CENTRE of its image, so the canvas is symmetric round the first
 // footprint hex (the anchor).
 
-import { NpRandom, PyRandom } from "../rng.js?v=8dccee325e";
+import { NpRandom, PyRandom } from "../rng.js?v=88bb8aa766";
 import { newImage, cloneImage, Draw, alphaComposite, alphaCompositeAt, paste, pasteAt, crop, gaussianBlur,
-  resizeL, rotate, scaleAffineNearest, blend, u8 } from "../raster.js?v=8dccee325e";
-import { geometry, hexPoints, radians, degrees } from "../maps/geometry.js?v=8dccee325e";
-import { noiseRgb, stripes, maskOf, HAZARD_Y, font } from "../maps/common.js?v=8dccee325e";
+  resizeL, rotate, scaleAffineNearest, blend, u8 } from "../raster.js?v=88bb8aa766";
+import { geometry, hexPoints, radians, degrees } from "../maps/geometry.js?v=88bb8aa766";
+import { noiseRgb, stripes, maskOf, HAZARD_Y, font } from "../maps/common.js?v=88bb8aa766";
 
 const F = Math.fround;
 const T = Math.trunc;
