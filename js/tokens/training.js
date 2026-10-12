@@ -6,11 +6,11 @@
 // Drawn like the rest of the kit: from above with the near (south) face showing, the kit's shadow
 // (down-right, so sets mix on one map), colours warmed to sit on the Training Floor's orange floor.
 
-import { PyRandom } from "../rng.js?v=4f137b6395";
-import { newImage, Draw, alphaComposite, alphaCompositeAt, paste } from "../raster.js?v=4f137b6395";
-import { geometry } from "../maps/geometry.js?v=4f137b6395";
-import { tokenCanvas, grime, size2Footprint, clipToHex } from "./kit.js?v=4f137b6395";
-import { groundShadow } from "./shadow.js?v=4f137b6395";
+import { PyRandom } from "../rng.js?v=0a584851f0";
+import { newImage, Draw, alphaComposite, alphaCompositeAt, paste } from "../raster.js?v=0a584851f0";
+import { geometry } from "../maps/geometry.js?v=0a584851f0";
+import { tokenCanvas, grime, size2Footprint, clipToHex } from "./kit.js?v=0a584851f0";
+import { groundShadow } from "./shadow.js?v=0a584851f0";
 
 const withShadow = (obj, cell) => groundShadow(obj, cell);                      // stood on the floor (shadow.js), not the kit's offset copy
 

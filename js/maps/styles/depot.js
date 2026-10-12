@@ -14,11 +14,11 @@
 // The style is built from a theme (makeStyle): the Generator Annex (annex.js) is the same floor in green,
 // with bar fields instead of diagonal stripes and manhole lids.
 
-import { NpRandom, PyRandom } from "../../rng.js?v=4f137b6395";
-import { newImage, cloneImage, Draw, alphaComposite, paste, gaussianBlur, u8 } from "../../raster.js?v=4f137b6395";
-import { centre, imageSize, zoneEdges, hexesBox, connectedParts } from "../geometry.js?v=4f137b6395";
-import { noise, maskOf, drawAllZones, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=4f137b6395";
-import { maze, remains } from "../synthetik.js?v=4f137b6395";
+import { NpRandom, PyRandom } from "../../rng.js?v=0a584851f0";
+import { newImage, cloneImage, Draw, alphaComposite, paste, gaussianBlur, u8 } from "../../raster.js?v=0a584851f0";
+import { centre, imageSize, zoneEdges, hexesBox, connectedParts } from "../geometry.js?v=0a584851f0";
+import { noise, maskOf, drawAllZones, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=0a584851f0";
+import { maze, remains } from "../synthetik.js?v=0a584851f0";
 
 // the Depot's theme; the Annex has its own (annex.js)
 export const DEPOT = {
@@ -536,7 +536,7 @@ export function makeStyle(T) {
         for (let c = 0; c < 3; c++) img.data[p * 4 + c] = u8(img.data[p * 4 + c] * k);
       }
     }
-    if (lamps) img = workLamps(img, m, cell, lamps);
+    if (lamps) img = workLamps(img, m, solid, cell, lamps);
     d = new Draw(img);
     const rail = [...T.rail, 255], dark = [...T.railDark, 255], lw = Math.max(3, Math.trunc(cell * 0.03));
     for (const [a, b] of zoneEdges(solid, cell)) {                             // the railing, on the edge facing open floor
@@ -618,29 +618,50 @@ export function makeStyle(T) {
     return alphaComposite(img, over);
   }
 
-  // work lamps down in the pit: a small bright fitting and a soft pool of light round it
-  function workLamps(img, m, cell, amt) {
-    const { w, h } = img, glow = newImage("L", w, h), gd = new Draw(glow), d = new Draw(img), r = new PyRandom(321);
-    const col = T.lamp || [255, 214, 150], n = Math.round((w * h) / (cell * cell) / 10 * amt), pts = [];
-    for (let i = 0; i < n * 6 && pts.length < n; i++) {
-      const x = r.uniform(0, w), y = r.uniform(0, h);
-      if (!m.data[Math.trunc(y) * w + Math.trunc(x)]) continue;
-      pts.push([x, y]);
-      gd.ellipse([x - cell * 0.9, y - cell * 0.6, x + cell * 0.9, y + cell * 0.8], { fill: 150 });
-      gd.ellipse([x - cell * 0.3, y - cell * 0.2, x + cell * 0.3, y + cell * 0.3], { fill: 255 });
+  // work lamps on the trench walls: fittings along each wall that faces the open floor, spaced evenly (the
+  // slider sets how close), each throwing a bright pool of light down into the pit away from its wall. The
+  // light adds colour, so it shows even where the pit is darkest.
+  function workLamps(img, m, solid, cell, amt) {
+    const { w, h } = img, col = T.lamp || [255, 206, 140], spacing = cell * 2.6 / Math.max(0.3, amt);
+    const glow = newImage("L", w, h), gd = new Draw(glow), lamps = [];
+    const edges = zoneEdges(solid, cell).map(([a, b]) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]).sort((p, q) => p[1] - q[1] || p[0] - q[0]);
+    for (const [mx, my] of edges) {
+      const [ccx, ccy] = centre(...nearestSolid(solid, mx, my, cell), cell);
+      let nx = ccx - mx, ny = ccy - my;                                          // into the pit
+      const L = Math.hypot(nx, ny) || 1;
+      nx /= L; ny /= L;
+      if (mx - nx * cell < 0 || my - ny * cell < 0 || mx - nx * cell > w || my - ny * cell > h) continue;   // a wall on the map's edge
+      if (lamps.some(([x, y]) => Math.hypot(x - mx, y - my) < spacing)) continue;
+      lamps.push([mx + nx * cell * 0.1, my + ny * cell * 0.1, nx, ny]);
     }
-    const soft = gaussianBlur(glow, cell * 0.3);
+    const blob = (x, y, nx, ny, along, across, v) => {                           // an ellipse along the light's direction
+      const pts = [];
+      for (let k = 0; k < 24; k++) { const t = (k / 24) * 2 * Math.PI, u = Math.cos(t) * along, q = Math.sin(t) * across; pts.push([x + nx * u - ny * q, y + ny * u + nx * q]); }
+      gd.polygon(pts, v);
+    };
+    for (const [x, y, nx, ny] of lamps) {
+      blob(x + nx * cell * 0.9, y + ny * cell * 0.9, nx, ny, cell * 1.0, cell * 0.75, 110);   // the pool on the pipes below
+      blob(x + nx * cell * 0.45, y + ny * cell * 0.45, nx, ny, cell * 0.5, cell * 0.38, 200);
+      blob(x + nx * cell * 0.12, y + ny * cell * 0.12, nx, ny, cell * 0.16, cell * 0.16, 255);
+    }
+    const soft = gaussianBlur(glow, cell * 0.22);
     for (let p = 0; p < w * h; p++) {
       if (!m.data[p] || !soft.data[p]) continue;
       const a = soft.data[p] / 255;
-      for (let c = 0; c < 3; c++) img.data[p * 4 + c] = u8(img.data[p * 4 + c] * (1 + a * 0.9) + col[c] * a * 0.12);
+      for (let c = 0; c < 3; c++) img.data[p * 4 + c] = u8(img.data[p * 4 + c] * (1 + a * 1.6) + col[c] * a * a * 0.35);
     }
-    for (const [x, y] of pts) {
-      d.rectangle([x - cell * 0.07, y - cell * 0.035, x + cell * 0.07, y + cell * 0.035], { fill: [24, 24, 26, 255] });
-      d.rectangle([x - cell * 0.05, y - cell * 0.018, x + cell * 0.05, y + cell * 0.018], { fill: [...col, 255] });
+    const d = new Draw(img);
+    for (const [x, y, nx, ny] of lamps) {                                        // the fitting: a dark caged housing, a bright lens
+      const px = -ny, py = nx, s = cell * 0.13, t = cell * 0.07;
+      const quad = (u0, u1, v0, v1) => [[x + nx * u0 + px * v0, y + ny * u0 + py * v0], [x + nx * u1 + px * v0, y + ny * u1 + py * v0], [x + nx * u1 + px * v1, y + ny * u1 + py * v1], [x + nx * u0 + px * v1, y + ny * u0 + py * v1]];
+      d.polygon(quad(-t, t, -s, s), [22, 22, 24, 255]);
+      d.polygon(quad(0, t * 0.8, -s * 0.75, s * 0.75), [...col, 255]);
+      d.polygon(quad(t * 0.1, t * 0.5, -s * 0.5, s * 0.5), [255, 250, 235, 255]);
+      for (const v of [-s * 0.4, 0, s * 0.4]) d.line([[x + nx * t * 0.8 + px * v, y + ny * t * 0.8 + py * v], [x + px * v, y + py * v]], [30, 30, 32, 255], 2);   // the cage
     }
     return img;
   }
+
 
   function nearestSolid(solid, x, y, cell) {
     let best = solid[0], bd = Infinity;

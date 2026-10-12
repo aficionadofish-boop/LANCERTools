@@ -10,11 +10,11 @@
 //
 // Every layer has its own random stream, so a slider changes only its own layer.
 
-import { PyRandom } from "../../rng.js?v=4f137b6395";
-import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=4f137b6395";
-import { centre, imageSize } from "../geometry.js?v=4f137b6395";
-import { ZONE_SETTINGS, withDefaults, keeper, extras, drawAllZones } from "../common.js?v=4f137b6395";
-import { wallMask } from "./tunnel.js?v=4f137b6395";
+import { PyRandom } from "../../rng.js?v=0a584851f0";
+import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=0a584851f0";
+import { centre, imageSize } from "../geometry.js?v=0a584851f0";
+import { ZONE_SETTINGS, withDefaults, keeper, extras, drawAllZones } from "../common.js?v=0a584851f0";
+import { wallMask } from "./tunnel.js?v=0a584851f0";
 
 const SOIL = [15, 18, 14];
 const MOSS = [30, 42, 25];

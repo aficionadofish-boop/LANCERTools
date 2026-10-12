@@ -1,9 +1,9 @@
 // What the Synthetik styles share (Training Floor, Depot): the floor's maze pattern and the robot
 // remains. Colours come from the style, so each level keeps its own paint and oil.
 
-import { PyRandom } from "../rng.js?v=4f137b6395";
-import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../raster.js?v=4f137b6395";
-import { noise } from "./common.js?v=4f137b6395";
+import { PyRandom } from "../rng.js?v=0a584851f0";
+import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../raster.js?v=0a584851f0";
+import { noise } from "./common.js?v=0a584851f0";
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
