@@ -14,11 +14,11 @@
 // The style is built from a theme (makeStyle): the Generator Annex (annex.js) is the same floor in green,
 // with bar fields instead of diagonal stripes and manhole lids.
 
-import { NpRandom, PyRandom } from "../../rng.js?v=88bb8aa766";
-import { newImage, Draw, alphaComposite, paste, gaussianBlur, u8 } from "../../raster.js?v=88bb8aa766";
-import { centre, imageSize, zoneEdges, hexesBox, connectedParts } from "../geometry.js?v=88bb8aa766";
-import { noise, maskOf, drawAllZones, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=88bb8aa766";
-import { maze, remains } from "../synthetik.js?v=88bb8aa766";
+import { NpRandom, PyRandom } from "../../rng.js?v=9ea0917c06";
+import { newImage, Draw, alphaComposite, paste, gaussianBlur, u8 } from "../../raster.js?v=9ea0917c06";
+import { centre, imageSize, zoneEdges, hexesBox, connectedParts } from "../geometry.js?v=9ea0917c06";
+import { noise, maskOf, drawAllZones, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=9ea0917c06";
+import { maze, remains } from "../synthetik.js?v=9ea0917c06";
 
 // the Depot's theme; the Annex has its own (annex.js)
 export const DEPOT = {

@@ -1,15 +1,15 @@
 // Render a base map: a hexmap JSON (cols, rows, zones, terrain, decals) in a style -> an RGBA image
 // at SS x the Roll20 size, and helpers to show or save it.
 
-import { CELL, SS } from "./geometry.js?v=88bb8aa766";
-import * as milbay from "./styles/milbay.js?v=88bb8aa766";
-import * as vr from "./styles/vr.js?v=88bb8aa766";
-import * as training from "./styles/training.js?v=88bb8aa766";
-import * as depot from "./styles/depot.js?v=88bb8aa766";
-import * as annex from "./styles/annex.js?v=88bb8aa766";
-import * as silos from "./styles/silos.js?v=88bb8aa766";
-import * as tunnel from "./styles/tunnel.js?v=88bb8aa766";
-import * as jungle from "./styles/jungle.js?v=88bb8aa766";
+import { CELL, SS } from "./geometry.js?v=9ea0917c06";
+import * as milbay from "./styles/milbay.js?v=9ea0917c06";
+import * as vr from "./styles/vr.js?v=9ea0917c06";
+import * as training from "./styles/training.js?v=9ea0917c06";
+import * as depot from "./styles/depot.js?v=9ea0917c06";
+import * as annex from "./styles/annex.js?v=9ea0917c06";
+import * as silos from "./styles/silos.js?v=9ea0917c06";
+import * as tunnel from "./styles/tunnel.js?v=9ea0917c06";
+import * as jungle from "./styles/jungle.js?v=9ea0917c06";
 
 export const STYLES = { milbay, vr, training, depot, annex, silos, tunnel, jungle };
 

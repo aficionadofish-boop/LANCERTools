@@ -6,13 +6,13 @@
 // is on top at a pixel to colour it. The strange growths come glowing and plain (_plain): the glowing
 // ones mark emissive pixels while painting and get a halo and light spill afterwards.
 
-import { PyRandom } from "../rng.js?v=88bb8aa766";
-import { newImage, Draw, alphaComposite, gaussianBlur } from "../raster.js?v=88bb8aa766";
-import { geometry } from "../maps/geometry.js?v=88bb8aa766";
-import { layerFor, centroid, row2, row3, fine, fill, project } from "./depot.js?v=88bb8aa766";
-import { withShadow } from "./kit.js?v=88bb8aa766";
-import { groundShadow } from "./shadow.js?v=88bb8aa766";
-import { fern, broadLeaf, leafPts, lit, tint } from "../maps/styles/jungle.js?v=88bb8aa766";
+import { PyRandom } from "../rng.js?v=9ea0917c06";
+import { newImage, Draw, alphaComposite, gaussianBlur } from "../raster.js?v=9ea0917c06";
+import { geometry } from "../maps/geometry.js?v=9ea0917c06";
+import { layerFor, centroid, row2, row3, fine, fill, project } from "./depot.js?v=9ea0917c06";
+import { withShadow } from "./kit.js?v=9ea0917c06";
+import { groundShadow } from "./shadow.js?v=9ea0917c06";
+import { fern, broadLeaf, leafPts, lit, tint } from "../maps/styles/jungle.js?v=9ea0917c06";
 
 const T = Math.trunc;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -233,58 +233,123 @@ function tokenTree(cell, size, seed) {
 
 // --- logs ------------------------------------------------------------------------------------------------------
 
-// A fallen, rotting log: bark plates and furrows running its length, knots, soft moss along the top,
-// stacked bracket fungus on its flank, a splintered west end and a hollow east end showing its rings.
+// Bark as plates: [plate 0..1 (0 = deep in a furrow or a crack), tone]. Furrows run along u (lines of equal
+// v); short cross cracks break each furrow row into plates, staggered from row to row.
+function barkAt(u, v, cell, seed, pitch = 0.04) {
+  const wv = v / (cell * pitch) + (fbm(u, v * 0.3, cell * 0.3, seed) - 0.5) * 5 + (fbm(u, v, cell * 0.06, seed + 8) - 0.5) * 0.8;
+  const fur = smooth(Math.abs(Math.sin(wv * Math.PI)) / (0.35 + 0.3 * fbm(u, v, cell * 0.1, seed + 9)));
+  const row = Math.floor(wv), wu = u / (cell * pitch * (5 + 4 * hashN(row, 7, seed))) + hashN(row, 8, seed) * 7 + (fbm(u * 0.3, v, cell * 0.15, seed + 4) - 0.5) * 2;
+  const brk = smooth(Math.abs(Math.sin(wu * Math.PI)) / 0.1);
+  const tone = 0.8 + 0.35 * fbm(u * 0.5, v, cell * 0.07, seed + 1) + (hashN(Math.floor(u * 0.7), Math.floor(v * 1.3), seed + 2) - 0.5) * 0.1;
+  return [fur * (0.3 + 0.7 * brk), tone];
+}
+
+// A tube along a polyline (token px), radius tapering r0 -> r1, lying on the floor or draped over base(x, y).
+// Returns fn(x, y) -> [height, along, across].
+function tube(pts, r0, r1, base = null) {
+  const seg = [];
+  let acc = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, ay] = pts[i], dx = pts[i + 1][0] - ax, dy = pts[i + 1][1] - ay, L = Math.hypot(dx, dy) || 1;
+    seg.push([ax, ay, dx, dy, L * L, acc, L]); acc += L;
+  }
+  return (x, y) => {
+    let best = 0, al = 0, ac = 0;
+    for (const [ax, ay, dx, dy, L2, a0, L] of seg) {
+      const t = clamp(((x - ax) * dx + (y - ay) * dy) / L2), sx = x - ax - dx * t, sy = y - ay - dy * t, d = Math.hypot(sx, sy);
+      const along = a0 + L * t, r = r0 + (r1 - r0) * along / acc;
+      if (d >= r) continue;
+      const v = (base ? base(x, y) * 0.92 : 0) + r * 0.3 + r * 1.1 * Math.sqrt(1 - (d / r) ** 2);
+      if (v > best) { best = v; al = along; ac = (sx * dy - sy * dx) / L; }
+    }
+    return [best, al, ac];
+  };
+}
+
+const LOGBARK = [80, 68, 56], WEATHER = [128, 120, 106], LICHEN = [150, 160, 128];
+
+// bark colour: furrows dark, plates toned, the tops weathered grey, lichen flecks, moss settling in
+function barkColour(u, v, cell, seed, up, x, y, mossCover) {
+  const [plate, tone] = barkAt(u, v, cell, seed);
+  let c = mix([22, 17, 13], LOGBARK.map((k) => k * tone), plate);
+  c = mix(c, WEATHER, 0.35 * up * plate);
+  const lich = fbm(x, y, cell * 0.035, seed + 6);
+  if (plate > 0.7 && lich > 0.7) c = mix(c, LICHEN, 0.45 * smooth((lich - 0.7) / 0.06));
+  return moss(c, x, y, up * (1.1 - plate * 0.3), cell, seed + 9, mossCover);
+}
+
+// A fallen tree: a lumpy, tapering trunk with grooved bark plates, its root flare and root stubs at the west
+// end, broken branch stubs, a jagged splintered east end with the heartwood rotted hollow, bracket fungus.
 function tokenLog(cell, n, seed) {
   const fp = n === 3 ? row3(cell) : row2(cell), [lay, , cs] = layerFor(cell, fp), { w, h } = lay, r = new PyRandom(840 + seed);
-  const [gx, gy] = centroid(cs), L = cell * (n - 0.2), R = cell * (n === 3 ? 0.22 : 0.19), bend = r.uniform(-0.07, 0.07) * cell;
-  const x0 = gx - L / 2, x1 = gx + L / 2, cy = gy + R * 0.4;
-  const axisY = (x) => cy + bend * Math.sin(Math.PI * (x - x0) / L);
-  const rad = (t) => R * (1 + 0.05 * Math.sin(t * 19 + seed) + 0.03 * Math.sin(t * 47));
-  const splinter = (y) => cell * 0.1 * hashN(Math.floor(y / (cell * 0.03)), 0, 841 + seed);       // how far each splinter reaches
-  const prof = (x, y) => {                                              // [height, t, d/R] of the body
-    if (x < x0 || x > x1) return [0, 0, 0];
-    const t = (x - x0) / L, rr = rad(t), d = y - axisY(x);
-    if (Math.abs(d) >= rr || x < x0 + cell * 0.1 - splinter(y)) return [0, t, 0];
-    return [rr * 0.3 + rr * 1.1 * Math.sqrt(1 - (d / rr) ** 2), t, d / rr];
+  const [gx, gy] = centroid(cs), L = cell * (n - 0.35), R = cell * (n === 3 ? 0.2 : 0.17), bend = r.uniform(-0.06, 0.06) * cell, S = 850 + seed;
+  const x0 = gx - L / 2 + cell * 0.08, x1 = gx + L / 2, cy = gy + R * 0.35;
+  const axisY = (x) => cy + bend * Math.sin(Math.PI * (x - x0) / L) + (fbm(x, 0, cell * 0.5, S) - 0.5) * R * 0.3;
+  const rad = (x) => { const t = (x - x0) / L; return R * (1 + 0.45 * smooth((0.14 - t) / 0.14) - 0.15 * t + (fbm(x, 0, cell * 0.25, S + 1) - 0.5) * 0.22); };
+  const jag = (y) => {                                                   // splinters: teeth of random length
+    const q = (y - cy) / (cell * 0.075) + 0.3, i = Math.floor(q), f = q - i;
+    return cell * (0.03 + 0.08 * hashN(i, 3, S)) * (1 - Math.abs(f - 0.5) * 2) ** 1.3;
   };
-  const hole = (x, y) => { const e = (x - (x1 - R * 0.45)) / (R * 0.45), d = (y - axisY(x)) / (R * 0.62); return e * e + d * d < 1; };
-  const body = (x, y) => { const [v] = prof(x, y); return v && hole(x, y) ? v - R * 0.9 : v; };
-  const knots = [];
-  for (let i = 0; i < n + 1; i++) knots.push([r.uniform(x0 + L * 0.15, x1 - L * 0.25), r.uniform(-0.5, 0.2) * R, R * r.uniform(0.08, 0.14)]);
-  const shelves = [];
-  for (let i = 0; i < 2; i++) {
-    const x = r.uniform(x0 + L * 0.2, x1 - L * 0.3);
-    for (let j = 0; j < 3; j++) shelves.push([x + r.uniform(-0.6, 0.6) * R * 0.5, R * (0.32 - j * 0.07), R * (0.25 + j * 0.2)]);   // stacked, smaller up the flank
+  const endX = (y) => x1 - cell * 0.13 + jag(y);
+  const hollow = (x, y) => { const rr = rad(x); return x > x1 - cell * 0.32 && Math.abs(y - axisY(x)) < rr * 0.5; };
+  const geo = (x, y) => {                                                // [height, v, rr, d] of the trunk
+    if (x < x0 || x > endX(y)) return [0, 0, 0, 0];
+    const rr = rad(x), d = y - axisY(x);
+    if (Math.abs(d) >= rr) return [0, 0, rr, d];
+    const v = Math.asin(d / rr) * rr;
+    let top = rr * 0.3 + rr * 1.1 * Math.sqrt(1 - (d / rr) ** 2);
+    if (x < endX(y) - cell * 0.035) top -= (1 - barkAt(x, v, cell, S)[0]) * R * 0.09;   // the grooves
+    if (hollow(x, y)) top -= rr * 0.75 * smooth((x - (x1 - cell * 0.32)) / (cell * 0.12));
+    return [top, v, rr, d];
+  };
+  const trunk = (x, y) => geo(x, y)[0];
+  const extras = [];                                                     // root stubs west, branch stubs on top
+  for (let i = 0; i < 3; i++) {
+    const a = Math.PI + (i - 1) * 0.9 + r.uniform(-0.25, 0.25), L2 = R * r.uniform(0.9, 1.4), sx = x0 + R * 0.4, sy = axisY(sx);
+    extras.push({ kind: "root", f: tube([[sx, sy], [sx + Math.cos(a) * L2 * 0.6, sy + Math.sin(a) * L2 * 0.6], [sx + Math.cos(a + 0.3) * L2, sy + Math.sin(a + 0.3) * L2]], R * 0.42, R * 0.12) });
   }
-  const parts = [body, ...shelves.map(([sx, s, off]) => (px, py) => {
-    const yc = axisY(sx) + R * 0.55 - off * 0.5, q = ((px - sx) / s) ** 2 + ((py - yc) / (s * 0.6)) ** 2;
-    return q < 1 && py > yc - s * 0.2 ? R * 0.6 + off + s * 0.25 * Math.sqrt(1 - q) : 0;
-  })];
-  const z = build(w, h, parts), S = 850 + seed;
+  for (let i = 0; i < n - 1; i++) {
+    const bx = r.uniform(x0 + L * 0.3, x1 - L * 0.3), side = r.random() < 0.5 ? -1 : 1, a = side * r.uniform(0.5, 1.0) - Math.PI / 2 * side * 0.2, L2 = R * r.uniform(0.9, 1.3);
+    const by = axisY(bx) + side * R * 0.2, ex = bx + L2 * 0.75, ey = by + side * R * 0.45;
+    extras.push({ kind: "branch", f: tube([[bx, by], [ex, ey]], R * 0.3, R * 0.2, trunk), end: [ex, ey] });
+  }
+  const shelves = [];
+  for (let i = 0; i < n - 1; i++) {
+    const x = r.uniform(x0 + L * 0.25, x1 - L * 0.35);
+    for (let j = 0; j < 3; j++) shelves.push([x + r.uniform(-0.5, 0.5) * R * 0.5, R * (0.3 - j * 0.06), R * (0.2 + j * 0.2)]);
+  }
+  const shelfF = shelves.map(([sx, s, off]) => (px, py) => {
+    const yc = axisY(sx) + rad(sx) * 0.6 - off * 0.5, ang = Math.atan2((py - yc) / 0.6, px - sx), q = Math.hypot((px - sx) / s, (py - yc) / (s * 0.6)) / (1 + 0.08 * Math.sin(ang * 9));
+    return q < 1 && py > yc - s * 0.2 ? R * 0.55 + off + s * 0.25 * Math.sqrt(1 - q) : 0;
+  });
+  const parts = [trunk, ...extras.map((e) => (x, y) => e.f(x, y)[0]), ...shelfF];
+  const z = build(w, h, parts);
   let obj = project(w, h, z, (x, y, hgt, wall) => {
     const [k] = owner(parts, x, y);
-    if (k > 0) {                                                         // zoned bracket: cream rim, rings of tan to umber
-      const [sx, s, off] = shelves[k - 1], yc = axisY(sx) + R * 0.55 - off * 0.5, q = Math.hypot((x - sx) / s, (y - yc) / (s * 0.6));
-      if (wall) return [92, 70, 46];
-      return mix(mix([226, 206, 160], [120, 84, 50], smooth((1 - q) * 1.6)), [72, 50, 32], 0.25 * (0.5 + 0.5 * Math.sin(q * 24)));
+    if (k > extras.length) {                                             // zoned bracket: cream rim, tan to umber rings
+      const [sx, s, off] = shelves[k - 1 - extras.length], yc = axisY(sx) + rad(sx) * 0.6 - off * 0.5, q = Math.hypot((x - sx) / s, (y - yc) / (s * 0.6));
+      if (wall) return [84, 64, 42];
+      return mix(mix([222, 202, 158], [116, 82, 50], smooth((1 - q) * 1.6)), [70, 48, 30], 0.3 * (0.5 + 0.5 * Math.sin(q * 26)));
     }
-    const [, t, dn] = prof(x, y);
-    if (!wall && hole(x, y)) {                                           // the hollow: dark inside, rings at the rim
-      const e = Math.hypot((x - (x1 - R * 0.45)) / (R * 0.45), (y - axisY(x)) / (R * 0.62));
-      if (e < 0.8) return mix([14, 10, 8], [44, 32, 22], e);
-      return mix([150, 116, 78], [96, 70, 46], 0.5 + 0.5 * Math.sin(e * 60));
+    if (k > 0) {
+      const e = extras[k - 1], [, along, across] = e.f(x, y);
+      if (e.kind === "branch" && Math.hypot(x - e.end[0], y - e.end[1]) < R * 0.17) return mix([176, 146, 104], [120, 92, 62], hashN(Math.floor(x), Math.floor(y), S + 3));   // the broken tip
+      const c = barkColour(along, across, cell, S + k, wall ? 0 : 0.7, x, y, e.kind === "root" ? 0.5 : 0.3);
+      return e.kind === "root" && along > R * 0.8 ? mix(c, [44, 34, 24], 0.5) : c;            // soil on the root ends
     }
-    if (x < x0 + cell * 0.12) return mix([170, 136, 92], [110, 82, 54], hashN(Math.floor(y / (cell * 0.03)), 1, 843 + seed));   // pale splinters
-    for (const [kx, ky, kr] of knots) {                                  // knots: a dark eye in rings of swirled bark
-      const dk = Math.hypot((x - kx) / 1.6, (wall ? R : y - axisY(x)) - ky) / kr;
-      if (dk < 1) return dk < 0.45 ? [30, 22, 16] : mix([96, 74, 52], BARK_DARK, 0.5 + 0.5 * Math.sin(dk * 14));
+    const [, v, rr, d] = geo(x, y);
+    if (x > endX(y) - cell * 0.035 && !hollow(x, y)) {             // torn wood: fibres along the grain
+      return mix([132, 110, 82], [74, 58, 42], hashN(Math.floor(y * 0.9), 5, S) * 0.6 + 0.4 * fbm(x, y, cell * 0.02, S + 4));
     }
-    const c = bark(x, wall ? hgt * 1.6 : dn * R * 1.6, cell, S, BARK, 0.04);
-    return wall ? c : moss(c, x, y, Math.max(0, 1 - Math.abs(dn) * 1.3), cell, S + 7, 0.45);
-  }, { gloss: 0.04, k: 0.6 });
+    if (!wall && hollow(x, y)) {
+      const depth = smooth((x - (x1 - cell * 0.32)) / (cell * 0.12)), e = Math.abs(d) / (rr * 0.5);
+      return mix(mix([110, 82, 54], [60, 44, 30], e), [12, 9, 7], depth * (1 - e * 0.5));
+    }
+    const up = wall ? 0 : Math.max(0, 1 - Math.abs(d / rr) * 1.2);
+    return barkColour(x, wall ? (rr * 1.57 + (rr * 0.3 - hgt)) : v, cell, S, up, x, y, 0.32);
+  }, { gloss: 0.02, k: 0.6 });
   obj = groundShadow(obj, cell);
-  return alphaComposite(plantsAround(w, h, cell, [[x0 + R * 0.5, cy + R * 0.3, 2], [x1 - R * 0.3, cy + R * 0.2, 1], [gx, cy + R * 1.1, 1]], 860 + seed), obj);
+  return alphaComposite(plantsAround(w, h, cell, [[x0 - R * 0.6, cy + R * 0.6, 2], [x1 - R * 0.2, cy + R * 0.8, 1], [gx, cy + R * 1.2, 1]], 860 + seed), obj);
 }
 
 // --- thickets ------------------------------------------------------------------------------------------------
@@ -556,54 +621,71 @@ function tokenSlab(cell, seed) {
   return alphaComposite(plantsAround(w, h, cell, [[x0 + cell * 0.1, y1, 2], [gx + cell * 0.3, y1 + cell * 0.05, 1]], 986 + seed), obj);
 }
 
-// A big pipe lying along the floor, two or three hexes: bolted flanges, a hazard band, a burst in the
-// middle with its metal torn outward, roots wrapped over it, moss in patches on top.
+// A big pipe lying along the floor, two or three hexes: old olive paint chipped to rust, dirt toward the
+// ground, dents, weld beads, flanges with bolt heads, a weathered hazard band, a burst torn outward with a
+// leak stain under it, roots with bark curving over it.
 function tokenPipe(cell, n, seed) {
   const fp = n === 3 ? row3(cell) : row2(cell), [lay, , cs] = layerFor(cell, fp), { w, h } = lay, r = new PyRandom(990 + seed);
-  const [gx, gy] = centroid(cs), L = cell * (n - 0.1), R = cell * 0.19, x0 = gx - L / 2, x1 = gx + L / 2, cy = gy + R * 0.5;
-  const burst = gx + r.uniform(-0.2, 0.2) * cell, flanges = [], fw = cell * 0.04;
-  for (let x = x0 + cell * 0.45; x < x1 - cell * 0.2; x += cell * 0.9) flanges.push(x);
-  const onFlange = (x) => flanges.some((f) => Math.abs(x - f) < fw);
-  const holeQ = (x, y) => Math.hypot((x - burst) / (R * 0.62), (y - cy + R * 0.1) / (R * 0.5));
-  const pipe = (x, y) => {
-    if (x < x0 || x > x1) return 0;
-    const rr = R * (onFlange(x) ? 1.14 : 1), d = Math.abs(y - cy);
-    if (d >= rr) return 0;
-    const top = rr * 0.3 + rr * 1.1 * Math.sqrt(1 - (d / rr) ** 2), q = holeQ(x, y);
-    if (q < 0.8) return R * 0.7;                                         // the hole
-    if (q < 1.15) return top + R * 0.12 * (1 - Math.abs(q - 0.95) / 0.2) * (0.6 + 0.4 * Math.sin(Math.atan2(y - cy, x - burst) * 7));   // torn petals
-    return top;
+  const [gx, gy] = centroid(cs), L = cell * (n - 0.1), R = cell * 0.19, x0 = gx - L / 2, x1 = gx + L / 2, cy = gy + R * 0.5, S = 991 + seed;
+  const flanges = [], welds = [], fw = cell * 0.045, bolt = cell * 0.017;
+  for (let x = x0 + cell * 0.45; x < x1 - cell * 0.2; x += cell * 0.9) { flanges.push(x); welds.push(x + cell * 0.45); }
+  const burst = welds.reduce((b, x) => (Math.abs(x - gx) < Math.abs(b - gx) ? x : b), welds[0]) + r.uniform(-0.1, 0.1) * cell;   // between two flanges
+  const dents = [];
+  for (let i = 0; i < n * 2; i++) dents.push([r.uniform(x0, x1), cy + r.uniform(-0.6, 0.3) * R, R * r.uniform(0.25, 0.5)]);
+  const flangeAt = (x) => flanges.find((f) => Math.abs(x - f) < fw);
+  const tear = (x, y) => {                                               // how far inside the jagged hole edge (<1 = hole)
+    const a = Math.atan2(y - cy + R * 0.1, (x - burst) / 1.4), j = 0.85 + 0.25 * hashN(Math.floor((a + 4) * 3.5), 1, S);
+    return Math.hypot((x - burst) / (R * 0.66), (y - cy + R * 0.1) / (R * 0.5)) / j;
   };
-  const parts = [pipe], roots = [];
+  const geo = (x, y) => {
+    if (x < x0 || x > x1) return [0, 0];
+    const fl = flangeAt(x), rr = R * (fl !== undefined ? 1.16 : 1), d = y - cy;
+    if (Math.abs(d) >= rr) return [0, 0];
+    const th = Math.asin(d / rr);
+    let top = rr * 0.3 + rr * 1.1 * Math.cos(th);
+    if (fl !== undefined) { const tb = Math.round(th / (Math.PI / 7)) * (Math.PI / 7); if (Math.hypot((th - tb) * rr, x - fl) < bolt) top += bolt * 0.8; }
+    if (welds.some((wx) => Math.abs(x - wx) < 1.6)) top += 1.2;
+    for (const [dx, dy, dr] of dents) { const q = Math.hypot(x - dx, y - dy) / dr; if (q < 1) top -= R * 0.07 * (1 - q * q); }
+    const q = tear(x, y);
+    if (q < 1) return [R * 0.65, th];                                     // the hole
+    if (q < 1.3) top += R * 0.14 * (1.3 - q) / 0.3;                        // the torn petals, bent outward
+    return [top, th];
+  };
+  const pipe = (x, y) => geo(x, y)[0];
+  const roots = [];
   for (let i = 0; i < n; i++) {
-    const x = r.uniform(x0 + cell * 0.3, x1 - cell * 0.3), a = r.uniform(-0.45, 0.45) + Math.PI / 2, L2 = R * 3.0;
-    const ax = x - Math.cos(a) * L2 / 2, ay = cy - Math.sin(a) * L2 / 2, bx = x + Math.cos(a) * L2 / 2, by = cy + Math.sin(a) * L2 / 2;
-    if (Math.abs(x - burst) < R) continue;
-    roots.push([ax, ay, bx, by]);
-    parts.push((px, py) => { const f = lying(ax, ay, bx, by, cell * 0.045)(px, py); return f ? f + pipe(px, py) * 0.9 : 0; });
+    const x = x0 + L * (i + 0.5) / n + r.uniform(-0.2, 0.2) * cell;
+    if (Math.abs(x - burst) < R * 1.2) continue;
+    const lean = r.uniform(-0.5, 0.5) * R, pts = [];
+    for (let k = 0; k <= 6; k++) { const t = k / 6; pts.push([x + lean * (t - 0.5) * 2 + Math.sin(t * 3 + i) * R * 0.25, cy - R * 1.7 + t * R * 3.6]); }
+    roots.push(tube(pts, cell * 0.05, cell * 0.035, pipe));
   }
-  const z = build(w, h, parts), S = 991 + seed;
+  const parts = [pipe, ...roots.map((f) => (x, y) => f(x, y)[0])];
+  const z = build(w, h, parts), PAINT = [70, 80, 66];
   let obj = project(w, h, z, (x, y, hgt, wall) => {
-    const [i] = owner(parts, x, y);
-    if (i > 0) { const [ax, ay, bx, by] = roots[i - 1], ln = Math.hypot(bx - ax, by - ay); return bark(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ln, ((x - ax) * (by - ay) - (y - ay) * (bx - ax)) / ln, cell, S + i, BARK, 0.025); }
-    const q = holeQ(x, y);
-    if (!wall && q < 0.8) return mix([10, 10, 12], [40, 40, 42], q);
-    if (!wall && q < 1.15) return [150, 152, 146];                       // the torn metal, bright at the tear
-    const v = wall ? 1 : Math.abs(y - cy) / R;
-    const shade = 0.5 + 0.5 * Math.cos(v * 1.4);
-    let c = mix([68, 72, 68], [116, 120, 112], shade);
-    if (onFlange(x)) {
-      c = mix([58, 62, 60], [96, 100, 96], shade);
-      const bolt = Math.abs(((wall ? hgt : y) / (cell * 0.05)) % 1 - 0.5) < 0.18 && Math.abs(x - flanges.find((f) => Math.abs(x - f) < fw)) < fw * 0.4;
-      if (bolt) c = [150, 150, 144];
-    }
+    const [k] = owner(parts, x, y);
+    if (k > 0) { const [, along, across] = roots[k - 1](x, y); return barkColour(along, across * 3, cell, S + k, wall ? 0 : 0.6, x, y, 0.25); }
+    const [, th] = geo(x, y), q = tear(x, y);
+    if (!wall && q < 1) return mix([8, 8, 9], [40, 30, 24], clamp(q - 0.6) * 2);
+    if (!wall && q < 1.3) return mix([170, 168, 160], [104, 66, 40], smooth((q - 1) / 0.3));    // bright torn edge, rust behind it
+    const vv = wall ? R * 1.6 + (R * 0.3 - hgt) : th * R, fl = flangeAt(x);
+    const chip = fbm(x * 1.2, vv * 1.2, cell * 0.05, S + 1), grime = wall ? 0.55 : smooth((th - 0.2) / 1.2) * 0.45;
+    let c = fl !== undefined ? [58, 66, 56] : PAINT;
     const hx = x - (x0 + cell * 0.18);
-    if (hx > 0 && hx < cell * 0.14) c = mix(c, ((hx + (wall ? hgt : y)) / (cell * 0.05)) % 2 < 1 ? [196, 156, 44] : [26, 24, 22], 0.75);   // hazard band
-    if (wall) return mix(c, RUST, 0.7 * rustStreak(x, hgt, cell, S + 2));
-    return moss(c, x, y, Math.max(0, 1 - v * 1.4), cell, S + 4, 0.3);
-  }, { gloss: 0.3, k: 0.6 });
+    if (hx > 0 && hx < cell * 0.14) c = ((hx + vv) / (cell * 0.05)) % 2 < 1 ? [176, 140, 44] : [30, 28, 24];      // hazard band
+    c = c.map((v) => v * (0.88 + 0.24 * fbm(x, vv, cell * 0.1, S + 2)));
+    if (chip > 0.6) c = mix(c, mix([92, 58, 36], [124, 84, 52], fbm(x, vv, cell * 0.02, S + 3)), smooth((chip - 0.6) / 0.05));   // chipped to rust
+    if (fl !== undefined && wall && Math.abs(((hgt / (cell * 0.05)) % 1) - 0.5) < 0.2 && Math.abs(x - fl) < fw * 0.5) c = [120, 120, 112];   // bolts on the face
+    if (welds.some((wx) => Math.abs(x - wx) < 1.6)) c = c.map((v) => v * 0.7);
+    c = mix(c, [30, 26, 20], grime);
+    if (wall) return mix(c, RUST, 0.6 * rustStreak(x, hgt, cell, S + 4));
+    return moss(c, x, y, Math.max(0, 1 - Math.abs(th) * 1.3), cell, S + 5, 0.25);
+  }, { gloss: 0.1, k: 0.6 });
+  const stain = newImage("RGBA", w, h), sd = new Draw(stain);              // the leak, soaked into the floor below the burst
+  sd.ellipse([burst - R * 1.3, cy + R * 0.4, burst + R * 1.5, cy + R * 1.5], { fill: [10, 12, 10, 150] });
   obj = groundShadow(obj, cell);
-  return alphaComposite(plantsAround(w, h, cell, [[x0 + R, cy + R, 1], [x1 - R, cy + R * 0.5, 2], [burst + R, cy + R * 1.3, 1]], 996 + seed), obj);
+  obj = alphaComposite(gaussianBlur(stain, cell * 0.05), obj);
+  return alphaComposite(plantsAround(w, h, cell, [[x0 + R, cy + R, 1], [x1 - R, cy + R * 0.5, 2], [burst + R * 1.4, cy + R * 1.4, 1]], 996 + seed), obj);
 }
 
 export const TOKENS = {

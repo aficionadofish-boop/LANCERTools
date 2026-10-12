@@ -30,7 +30,7 @@ async function request(mode, fn) {
 let codePromise = null;
 function codeText() {
   codePromise ??= (async () => {
-    const seen = new Map(), todo = [new URL("../worker.js?v=88bb8aa766", import.meta.url).href];
+    const seen = new Map(), todo = [new URL("../worker.js?v=9ea0917c06", import.meta.url).href];
     while (todo.length) {
       const url = todo.pop();
       if (seen.has(url)) continue;
