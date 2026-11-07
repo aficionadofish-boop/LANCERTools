@@ -214,6 +214,7 @@ export class MapModel {
     changed = this.setHexDecal("hazard_border", c, r, false) || changed;
     changed = this.setHexDecal("hazard_ring", c, r, false) || changed;
     changed = this.setHexDecal("floor_hatch", c, r, false) || changed;
+    changed = this.setHexDecal("bay", c, r, false) || changed;
     changed = this.setBreach(c, r, false) || changed;
     changed = this.eraseTracks(c, r) || changed;
     return changed;
@@ -229,6 +230,7 @@ export class MapModel {
     if (this.hexDecal("hazard_border")?.hexes.has(k)) out.push("lift");
     if (this.hexDecal("hazard_ring")?.hexes.has(k)) out.push("hazard ring");
     if (this.hexDecal("floor_hatch")?.hexes.has(k)) out.push("floor hatch");
+    if (this.hexDecal("bay")?.hexes.has(k)) out.push("painted bay");
     if (this.breachAt(k)) out.push("breach");
     return out;
   }

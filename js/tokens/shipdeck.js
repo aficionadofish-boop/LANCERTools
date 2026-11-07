@@ -8,13 +8,13 @@
 // light and the south-facing view match the other sets; lettering, screens and plants are drawn on top.
 // Screens and lamps glow onto the floor round them.
 
-import { PyRandom } from "../rng.js?v=5b84a09c26";
-import { newImage, Draw, alphaCompositeAt, gaussianBlur } from "../raster.js?v=5b84a09c26";
-import { geometry } from "../maps/geometry.js?v=5b84a09c26";
-import { size2Footprint, grime } from "./kit.js?v=5b84a09c26";
-import { groundShadow } from "./shadow.js?v=5b84a09c26";
-import { layerFor, centroid, row2, sh, A, cylinder, sphere, trace, screen, mottle, chips, fine, fill, addCyl, project, tokenDrums } from "./depot.js?v=5b84a09c26";
-import { broadLeaf, fern } from "../maps/styles/jungle.js?v=5b84a09c26";
+import { PyRandom } from "../rng.js?v=8110e80930";
+import { newImage, Draw, alphaCompositeAt, gaussianBlur } from "../raster.js?v=8110e80930";
+import { geometry } from "../maps/geometry.js?v=8110e80930";
+import { size2Footprint, grime } from "./kit.js?v=8110e80930";
+import { groundShadow } from "./shadow.js?v=8110e80930";
+import { layerFor, centroid, row2, sh, A, cylinder, sphere, trace, screen, mottle, chips, fine, fill, addCyl, project, tokenDrums } from "./depot.js?v=8110e80930";
+import { broadLeaf, fern } from "../maps/styles/jungle.js?v=8110e80930";
 
 const K = 0.85;
 const GREY = [96, 104, 104], DARK = [52, 56, 58], YEL = [214, 170, 44], RED = [168, 44, 32], BLUE = [62, 100, 136];

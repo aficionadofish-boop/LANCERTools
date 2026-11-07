@@ -7,16 +7,17 @@
 // Fabrication Bay. The themes are registered in render.js.
 //
 // Decals: floor_hatch -> a round pressure hatch with a hand wheel; hazard_border -> a lift platform;
-// hazard_ring -> a yellow/black band; blast/scorch -> scorch; tracks -> tread marks.
+// hazard_ring -> a yellow/black band; blast/scorch -> scorch; tracks -> tread marks; bay (themes with
+// bays or cells) -> a painted bay per connected group, replacing the random ones.
 // "obstruction" terrain (outside the play area) -> the bulkhead.
 //
 // Every layer has its own random stream, so a slider changes only its own layer.
 
-import { PyRandom } from "../../rng.js?v=5b84a09c26";
-import { newImage, Draw, alphaComposite, u8 } from "../../raster.js?v=5b84a09c26";
-import { centre, geometry, imageSize, hexesBox, connectedParts } from "../geometry.js?v=5b84a09c26";
-import { ZONE_SETTINGS, withDefaults, keeper, extras, drawAllZones, decalHazardRing, decalBlast, decalTracks } from "../common.js?v=5b84a09c26";
-import { vnoise, grain, blurL, addLight, darken } from "./jungle.js?v=5b84a09c26";
+import { PyRandom } from "../../rng.js?v=8110e80930";
+import { newImage, Draw, alphaComposite, u8 } from "../../raster.js?v=8110e80930";
+import { centre, geometry, imageSize, hexesBox, connectedParts } from "../geometry.js?v=8110e80930";
+import { ZONE_SETTINGS, withDefaults, keeper, extras, drawAllZones, decalHazardRing, decalBlast, decalTracks, maskOf } from "../common.js?v=8110e80930";
+import { vnoise, grain, blurL, addLight, darken } from "./jungle.js?v=8110e80930";
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -207,8 +208,10 @@ function places(n, size, cell, w, h, blocked, seed, pad = 0.25) {
   return out;
 }
 
-function paint(img, cell, T, o, blocked, glow, data) {
+function paint(img, cell, T, o, blocked, glow, data, bays) {
   const { w, h } = img, over = newImage("RGBA", w, h), d = new Draw(over), P = T.paint || {};
+  if (P.boxes) for (const [x, y, bw, bh] of bays || [])                       // walkway lines stop at a painted bay
+    take(blocked, w, h, x - cell * 0.2, y - cell * 0.2, x + bw + cell * 0.2, y + bh + cell * 0.2);
   const base = blocked.slice();                                              // lines only avoid walls, trenches and decals
   const a = (al) => Math.round(al * clamp(o.markings, 0, 1.5) / 1.5 * 1.5);
   const lw = Math.max(2, Math.round(cell * 0.04));
@@ -260,18 +263,22 @@ function paint(img, cell, T, o, blocked, glow, data) {
       }
     }
   }
-  if (P.boxes && o.markings) {                                                // bays and work cells
-    const B = P.boxes, n = Math.round((w * h) / (cell * cell) / B.per);
-    places(n, B.size, cell, w, h, blocked, 511).forEach(([x, y, bw, bh], k) => {
+  // bays and work cells: the painted ones (the "bay" decal) if there are any, else scattered at random
+  const painted = bays && bays.length > 0;
+  if (P.boxes && (painted || o.markings)) {
+    const B = P.boxes, n = Math.round((w * h) / (cell * cell) / B.per * (o.bays ?? 1));
+    const A = painted ? (al) => Math.round(al * Math.max(1, clamp(o.markings, 0, 1.5))) : a;   // painted ones always show
+    const list = painted ? bays : places(n, B.size, cell, w, h, blocked, 511);
+    list.forEach(([x, y, bw, bh], k) => {
       const t = lw * 1.3;
       if (B.hazard) {                                                          // a yellow/black striped border
         for (const [rx0, ry0, rx1, ry1] of [[x, y, x + bw, y + t * 2], [x, y + bh - t * 2, x + bw, y + bh], [x, y, x + t * 2, y + bh], [x + bw - t * 2, y, x + bw, y + bh]]) {
-          d.rectangle([rx0, ry0, rx1, ry1], { fill: [...B.colour, a(210)] });
-          hazardBands(d, [rx0, ry0, rx1, ry1], t * 2.4, t * 1.2, [22, 20, 16, a(200)]);
+          d.rectangle([rx0, ry0, rx1, ry1], { fill: [...B.colour, A(210)] });
+          hazardBands(d, [rx0, ry0, rx1, ry1], t * 2.4, t * 1.2, [22, 20, 16, A(200)]);
         }
-      } else d.rectangle([x, y, x + bw, y + bh], { outline: [...B.colour, a(200)], width: Math.round(t) });
+      } else d.rectangle([x, y, x + bw, y + bh], { outline: [...B.colour, A(200)], width: Math.round(t) });
       const label = B.label + " " + String(k + 1).padStart(2, "0"), size = cell * 0.26;
-      d.text([x + t * 2.5, y + t * 2.5], label, size, [...B.colour, a(170)], { family: "stencil" });
+      d.text([x + t * 2.5, y + t * 2.5], label, size, [...B.colour, A(170)], { family: "stencil" });
       if (B.rings) for (const [rx, ry] of [[0.18, 0.25], [0.82, 0.25], [0.18, 0.75], [0.82, 0.75]]) {   // tie-down rings
         const cx = x + bw * rx, cy = y + bh * ry, R = cell * 0.06;
         d.ellipse([cx - R, cy - R, cx + R, cy + R], { outline: [40, 42, 44, 230], width: Math.max(2, Math.round(cell * 0.02)) });
@@ -358,6 +365,27 @@ function hazardBands(d, [x0, y0, x1, y1], period, band, colour) {
   for (let c = Math.floor((x0 + y0) / period) * period; c < x1 + y1; c += period) {
     const poly = cut(cut(rect, ([x, y]) => x + y - c), ([x, y]) => c + band - (x + y));
     if (poly.length >= 3) d.polygon(poly, colour);
+  }
+}
+
+// The reactor well: opaque coolant filling the ring's hexes, dark where the deck's lip shades it, glowing blue
+// further in, with rippling caustic light. The hazard band is drawn over its edge afterwards.
+function coolantWell(img, hexes, cell) {
+  const { w, h } = img, m = maskOf([w, h], hexes.map(([c, r]) => centre(c, r, cell)), cell);
+  const depth = blurL(m, cell * 0.35).data, n1 = vnoise(h, w, cell * 0.5, 591), n2 = vnoise(h, w, cell * 0.16, 592), d = img.data;
+  const rim = [8, 30, 42], deep = [26, 120, 160], glow = [92, 205, 240];
+  for (let p = 0; p < w * h; p++) {
+    if (!m.data[p]) continue;
+    const x = p % w, y = (p - x) / w, i = p * 4;
+    const k = clamp((depth[p] / 255 - 0.5) * 2);                              // 0 at the rim, 1 a third of a hex in
+    const core = clamp((depth[p] / 255 - 0.85) * 6.7);                        // the middle of a big well glows
+    const wave = Math.sin((x * 0.8 + y * 0.6) / (cell * 0.07) + n1[p] * 9) * Math.sin((y * 0.9 - x * 0.5) / (cell * 0.1) + n2[p] * 7);
+    const caustic = Math.max(0, wave) ** 5 * k;
+    for (let c = 0; c < 3; c++) {
+      const base = lerp(lerp(rim[c], deep[c], k), glow[c], core * 0.7);
+      d[i + c] = u8(base + caustic * [70, 110, 100][c] + (n2[p] - 0.5) * 16 * k);
+    }
+    d[i + 3] = 255;
   }
 }
 
@@ -481,6 +509,7 @@ export function makeStyle(T) {
     { id: "wear", label: "Worn paint", group: "Floor", type: "range", min: 0, max: 2, step: 0.05, default: 1 },
     { id: "grime", label: "Grime", group: "Floor", type: "range", min: 0, max: 2, step: 0.05, default: 1 },
     { id: "markings", label: T.markingsLabel || "Painted markings", group: "Paint", type: "range", min: 0, max: 1.5, step: 0.05, default: 1 },
+    ...(T.paint && T.paint.boxes ? [{ id: "bays", label: `Random ${T.paint.boxes.tool.toLowerCase()}s (when none are painted)`, group: "Paint", type: "range", min: 0, max: 2, step: 0.05, default: 1 }] : []),
     { id: "stencils", label: "Stencilled words", group: "Paint", type: "range", min: 0, max: 2, step: 0.05, default: 1 },
     { id: "trenches", label: T.trenchLabel || "Grating trenches", group: "Structure", type: "range", min: 0, max: 2, step: 0.05, default: T.trench ? 1 : 0 },
     { id: "pipes", label: "Pipes along the bulkheads", group: "Structure", type: "range", min: 0, max: 1, step: 0.05, default: T.pipesDefault ?? 1 },
@@ -510,15 +539,24 @@ export function makeStyle(T) {
       const pad = dec.type === "hazard_ring" ? cell * 0.75 : cell * 0.25;
       for (const [c, r] of hexOf(dec)) { const [x, y] = centre(c, r, cell); take(blocked, w, h, x - cell / 2 - pad, y - cell * 0.6 - pad, x + cell / 2 + pad, y + cell * 0.6 + pad); }
     }
-    img = paint(img, cell, T, o, blocked, glow, data);
+    // painted bays: each connected group of "bay" hexes is one box, numbered top to bottom, left to right
+    const bayHexes = (data.decals || []).filter((dec) => dec.type === "bay").flatMap(hexOf);
+    const bays = T.paint && T.paint.boxes && bayHexes.length
+      ? connectedParts(bayHexes, cell).map((p) => hexesBox(p, cell, -cell * 0.1)).map(([x0, y0, x1, y1]) => [x0, y0, x1 - x0, y1 - y0])
+        .sort((p, q) => (Math.abs(p[1] - q[1]) > cell * 0.5 ? p[1] - q[1] : p[0] - q[0]))
+      : [];
+    img = paint(img, cell, T, o, blocked, glow, data, bays);
     for (const dec of data.decals || []) {
       if (dec.type === "tracks") img = decalTracks(img, dec.from, dec.to, cell);
       else if (dec.type === "hazard_border") lift(img, hexOf(dec), cell, T);
-      else if (dec.type === "hazard_ring") img = decalHazardRing(img, hexOf(dec), cell);
+      else if (dec.type === "hazard_ring") {
+        if (T.coolant) coolantWell(img, hexOf(dec), cell);
+        img = decalHazardRing(img, hexOf(dec), cell);
+      }
       else if (dec.type === "floor_hatch") for (const [c, r] of hexOf(dec)) hatch(img, ...centre(c, r, cell), cell, T);
     }
     if (T.ringGlow) for (const dec of data.decals || [])                              // a reactor well glows
-      if (dec.type === "hazard_ring") { const gd = new Draw(glow); for (const [c, r] of hexOf(dec)) { const [x, y] = centre(c, r, cell); gd.ellipse([x - cell * 0.6, y - cell * 0.6, x + cell * 0.6, y + cell * 0.6], { fill: 255 }); } }
+      if (dec.type === "hazard_ring") { const gd = new Draw(glow); for (const [c, r] of hexOf(dec)) { const [x, y] = centre(c, r, cell); gd.ellipse([x - cell * 0.6, y - cell * 0.6, x + cell * 0.6, y + cell * 0.6], { fill: T.coolant ? 110 : 255 }); } }
     (data.decals || []).filter((x) => x.type === "blast" || x.type === "scorch").forEach((dec, i) => { img = decalBlast(img, hexOf(dec), cell, 581 + i); });
     let wall = wm;
     if (solid.size) wall = bulkhead(img, solid, data, cell, T, o, light);
@@ -528,9 +566,11 @@ export function makeStyle(T) {
 
   return {
     name: T.name, blurb: T.blurb, terrainNote: T.terrainNote,
-    decals: ["tracks", "blast", "scorch", "hazard_border", "hazard_ring", "floor_hatch"],
+    decals: ["tracks", "blast", "scorch", "hazard_border", "hazard_ring", "floor_hatch", ...(T.paint && T.paint.boxes ? ["bay"] : [])],
     tools: {
       lift: { label: "Lift platform", hint: "A heavy lift platform with a hazard-striped edge; neighbouring hexes join into one platform." },
+      ...(T.paint && T.paint.boxes ? { bay: { label: T.paint.boxes.tool, hint: `A ${T.paint.boxes.tool.toLowerCase()} painted on the deck: neighbouring hexes join into one, numbered top to bottom. Once you paint one, the random ones go.` } } : {}),
+      ...(T.coolant ? { ring: { label: "Reactor well", hint: "The painted hexes fill with glowing coolant, with a yellow/black band round the edge." } } : {}),
       hatch: { label: "Pressure hatch", hint: "A round hatch in the deck with a hand wheel." },
       breach: { label: "Scorch", hint: "Click a hex: soot and burn marks." },
     },
@@ -552,7 +592,7 @@ export const HANGAR = {
   void: [10, 11, 12], grate: [96, 102, 104], trenchRim: [70, 76, 78],
   paint: {
     lanes: { every: 6, gap: 1.6, colour: [214, 170, 40], dash: false },
-    boxes: { per: 22, size: [3.2, 3.6], colour: [212, 210, 196], label: "BAY", rings: true },
+    boxes: { per: 22, size: [3.2, 3.6], colour: [212, 210, 196], label: "BAY", tool: "Mech bay", rings: true },
     stencils: ["NO STOWAGE", "KEEP CLEAR", "DECK 2", "FR 114", "FR 118", "MECH LANE", "TIE DOWN"], stencilColour: [222, 220, 206], stencilAlpha: 80,
   },
   wall: [56, 62, 64], pipes: [[[96, 104, 108], 0.13, 0.05], [[150, 52, 40], 0.25, 0.035], [[70, 96, 120], 0.34, 0.03]],
@@ -597,7 +637,7 @@ export const COMMAND = {
 
 export const REACTOR = {
   name: "Reactor Hall",
-  blurb: "Heavy tread plate crossed by wide coolant trenches, radiation markings and warning stencils, red valve wheels on the bulkhead pipes, hard white light. A hazard ring glows like a reactor well.",
+  blurb: "Heavy tread plate crossed by wide coolant trenches, radiation markings and warning stencils, red valve wheels on the bulkhead pipes, hard white light. A hazard ring becomes a reactor well full of glowing coolant.",
   terrainNote: "Reactor Hall " + BULKHEAD,
   floor: { kind: "plates", w: 1.0, h: 1.0, stagger: 0.5, colour: [76, 80, 82], var: 6, tread: true },
   bare: [120, 122, 120], grime: [22, 22, 20],
@@ -607,7 +647,7 @@ export const REACTOR = {
     trefoil: [214, 172, 42],
     stencils: ["COOLANT LOOP A", "COOLANT LOOP B", "RADIATION AREA", "NO ENTRY WITHOUT DOSIMETER", "PUMP 3"], stencilColour: [214, 172, 42], stencilAlpha: 95,
   },
-  ringGlow: true, glowColour: [90, 190, 255],
+  ringGlow: true, coolant: true, glowColour: [90, 190, 255],
   wall: [54, 58, 60], pipes: [[[150, 150, 140], 0.14, 0.06], [[70, 120, 150], 0.29, 0.05], [[160, 46, 34], 0.4, 0.03]],
   wallLamps: 2.0, lampGlass: [235, 245, 255], hatchSteel: [96, 100, 102], hatchStripes: true, wheel: [170, 46, 34],
   liftSteel: [70, 74, 76],
@@ -622,7 +662,7 @@ export const FABRICATION = {
   bare: [150, 150, 146], grime: [44, 44, 40],
   paint: {
     rails: { every: 6, gauge: 0.7 },
-    boxes: { per: 26, size: [3, 3], colour: [210, 168, 40], label: "CELL", hazard: true },
+    boxes: { per: 26, size: [3, 3], colour: [210, 168, 40], label: "CELL", tool: "Work cell", hazard: true },
     lanes: { every: 6, gap: 1.2, colour: [70, 150, 96], dash: true },
     stencils: ["STORES", "PRINT CELL", "FEEDSTOCK", "QUARANTINE", "OUTBOUND", "KEEP CLEAR"], stencilColour: [40, 42, 40], stencilAlpha: 70,
   },

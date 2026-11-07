@@ -2,12 +2,12 @@
 // get the Roll20 base map. Drawing happens in the render worker; this page keeps an overlay of what
 // was painted, so edits show at once while the map redraws underneath.
 
-import { MapModel, key, parse, zoneKind } from "./mapmodel.js?v=5b84a09c26";
-import { Renderer } from "./renderer.js?v=5b84a09c26";
-import * as cache from "./rendercache.js?v=5b84a09c26";
-import { STYLES } from "../maps/render.js?v=5b84a09c26";
-import { CELL, SS, geometry, centre, hexPoints, imageSize, colLetter, zoneEdges } from "../maps/geometry.js?v=5b84a09c26";
-import { ZONE_TINT, DEFAULT_TINT } from "../maps/common.js?v=5b84a09c26";
+import { MapModel, key, parse, zoneKind } from "./mapmodel.js?v=8110e80930";
+import { Renderer } from "./renderer.js?v=8110e80930";
+import * as cache from "./rendercache.js?v=8110e80930";
+import { STYLES } from "../maps/render.js?v=8110e80930";
+import { CELL, SS, geometry, centre, hexPoints, imageSize, colLetter, zoneEdges } from "../maps/geometry.js?v=8110e80930";
+import { ZONE_TINT, DEFAULT_TINT } from "../maps/common.js?v=8110e80930";
 
 const $ = (id) => document.getElementById(id);
 const STORE = "lancertools.mapmaker";
@@ -23,6 +23,7 @@ const TOOLS = [
   { id: "solid", label: "Solid structure", colour: "#101012", terrain: true,
     hint: "Outside the play area. Walls and cover inside the area are tokens." },
   { id: "lift", label: "Lift / loading pad", colour: "#c44026", decal: "hazard_border", hint: "Military Bay: a freight elevator with railings. Training Floor: a hazard-striped loading pad. Depot: a dark steel plate with herringbone tread." },
+  { id: "bay", label: "Painted bay", colour: "#d4d2c4", decal: "bay", hint: "A bay painted on the deck: neighbouring hexes join into one." },
   { id: "breach", label: "Hull breach", colour: "#ff7828", decal: "blast", hint: "Click a hex: a torn hole with scorch; rubble is thrown from the first breach." },
   { id: "ring", label: "Hazard ring", colour: "#d7a51d", decal: "hazard_ring", hint: "A yellow/black band on the floor around the painted block (a reactor well)." },
   { id: "tracks", label: "Tread marks", colour: "#777", decal: "tracks", hint: "Click the start hex, then the end hex." },
@@ -124,6 +125,8 @@ function drawOverlay() {
     }
     const lift = model.hexDecal("hazard_border");
     if (lift) { fillHexes(ctx, lift.hexes, "rgba(196,64,38,0.45)"); outline(ctx, lift.hexes, "#e0683f", 2.5); }
+    const bay = model.hexDecal("bay");
+    if (bay) { fillHexes(ctx, bay.hexes, "rgba(212,210,196,0.3)"); outline(ctx, bay.hexes, "#e8e6d8", 2.5, [10, 5]); }
     const ring = model.hexDecal("hazard_ring");
     if (ring) outline(ctx, ring.hexes, "#d7a51d", 4, [8, 6]);
     const hatch = model.hexDecal("floor_hatch");
@@ -198,6 +201,7 @@ function apply(c, r, erase) {
   if (tool === "lift") return model.setHexDecal("hazard_border", c, r, !erase);
   if (tool === "ring") return model.setHexDecal("hazard_ring", c, r, !erase);
   if (tool === "hatch") return model.setHexDecal("floor_hatch", c, r, !erase);
+  if (tool === "bay") return model.setHexDecal("bay", c, r, !erase);
   if (tool === "breach") return model.setBreach(c, r, !erase);
   if (tool === "tracks") {
     if (erase) return model.eraseTracks(c, r);

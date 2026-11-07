@@ -4,7 +4,7 @@
 // neighbours by dark pipes. Solid structure is a sunken trench behind a blue railing.
 // Reference: _backstage/reference/synthetik/ballistic_silos/.
 
-import { makeStyle } from "./depot.js?v=5b84a09c26";
+import { makeStyle } from "./depot.js?v=8110e80930";
 
 const SILOS = {
   name: "Ballistic Silos",
