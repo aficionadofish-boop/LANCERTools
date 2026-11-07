@@ -4,7 +4,7 @@
 // structure is a sunken pipe trench behind a green railing.
 // Reference: _backstage/reference/synthetik/generator_annex/.
 
-import { makeStyle } from "./depot.js?v=8110e80930";
+import { makeStyle } from "./depot.js?v=666bbb997f";
 
 const ANNEX = {
   name: "Generator Annex",

@@ -11,14 +11,14 @@
 // drawn for its place (north/south side, west/east end): none need rotating, so the light always falls
 // from the north-west.
 
-import { NpRandom, PyRandom } from "../rng.js?v=8110e80930";
-import { newImage, Draw, alphaComposite, alphaCompositeAt, paste, gaussianBlur, rotate, u8 } from "../raster.js?v=8110e80930";
-import { geometry, hexPoints } from "../maps/geometry.js?v=8110e80930";
-import { maskOf, stripes } from "../maps/common.js?v=8110e80930";
-import { tokenCanvas, grime } from "./kit.js?v=8110e80930";
-import { groundShadow } from "./shadow.js?v=8110e80930";
-import { fblur, drapeTarp } from "./training.js?v=8110e80930";
-import { layerFor, row2, fine, fill, addCyl, addBox, project, box, chips } from "./depot.js?v=8110e80930";
+import { NpRandom, PyRandom } from "../rng.js?v=666bbb997f";
+import { newImage, Draw, alphaComposite, alphaCompositeAt, paste, gaussianBlur, rotate, u8 } from "../raster.js?v=666bbb997f";
+import { geometry, hexPoints } from "../maps/geometry.js?v=666bbb997f";
+import { maskOf, stripes } from "../maps/common.js?v=666bbb997f";
+import { tokenCanvas, grime } from "./kit.js?v=666bbb997f";
+import { groundShadow } from "./shadow.js?v=666bbb997f";
+import { fblur, drapeTarp } from "./training.js?v=666bbb997f";
+import { layerFor, row2, fine, fill, addCyl, addBox, project, box, chips } from "./depot.js?v=666bbb997f";
 
 const T = Math.trunc;
 const sh = (c, k) => c.map((v) => Math.max(0, Math.min(255, T(v * k))));

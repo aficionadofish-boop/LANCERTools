@@ -8,15 +8,16 @@
 // light and the south-facing view match the other sets; lettering, screens and plants are drawn on top.
 // Screens and lamps glow onto the floor round them.
 
-import { PyRandom } from "../rng.js?v=8110e80930";
-import { newImage, Draw, alphaCompositeAt, gaussianBlur } from "../raster.js?v=8110e80930";
-import { geometry } from "../maps/geometry.js?v=8110e80930";
-import { size2Footprint, grime } from "./kit.js?v=8110e80930";
-import { groundShadow } from "./shadow.js?v=8110e80930";
-import { layerFor, centroid, row2, sh, A, cylinder, sphere, trace, screen, mottle, chips, fine, fill, addCyl, project, tokenDrums } from "./depot.js?v=8110e80930";
-import { broadLeaf, fern } from "../maps/styles/jungle.js?v=8110e80930";
+import { PyRandom } from "../rng.js?v=666bbb997f";
+import { newImage, Draw, alphaCompositeAt, gaussianBlur } from "../raster.js?v=666bbb997f";
+import { geometry } from "../maps/geometry.js?v=666bbb997f";
+import { size2Footprint, grime } from "./kit.js?v=666bbb997f";
+import { groundShadow } from "./shadow.js?v=666bbb997f";
+import { layerFor, centroid, row2, sh, A, cylinder, sphere, trace, screen, mottle, chips, fine, fill, addCyl, project, tokenDrums } from "./depot.js?v=666bbb997f";
+import { broadLeaf, fern } from "../maps/styles/jungle.js?v=666bbb997f";
 
 const K = 0.85;
+const lerp = (a, b, t) => a + (b - a) * t;
 const GREY = [96, 104, 104], DARK = [52, 56, 58], YEL = [214, 170, 44], RED = [168, 44, 32], BLUE = [62, 100, 136];
 const WHITE = [196, 196, 186], OLIVE = [90, 98, 72], STEEL = [128, 134, 134], ORANGE = [192, 104, 44];
 
@@ -425,6 +426,60 @@ function tokenPrinter(cell) {
   return finish(out, cell, 2260, 0.06);
 }
 
+// the big printer (Size 3): a heavier frame on a checker-plate bed, a twin-beam yellow gantry with the carriage
+// and its glowing head, a large part half built (a stepped hull section, print lines on its faces), a feedstock
+// hopper on the back rail with a hose down to the carriage, a control desk with a lit screen in one corner
+function tokenPrinter3(cell) {
+  const [sx, sy, hw] = geometry(cell);
+  const fp = [[0, 0], [sx, 0], [-sx, 0], [hw, -sy], [-hw, -sy], [hw, sy], [-hw, sy]];
+  const [lay, , cs] = layerFor(cell, fp), cx = cs[0][0], cy = cs[0][1] + cell * 0.22;
+  const x0 = cx - cell * 1.22, x1 = cx + cell * 1.22, y0 = cy - cell * 0.82, y1 = cy + cell * 0.72;
+  const H = cell * 0.82, t = 14, frame = [70, 78, 84], shapes = [];
+  const checker = (p, n) => (n[2] > 0.9 && ((Math.floor(p[0] / 9) + Math.floor(p[1] / 9)) & 1) ? [62, 66, 64] : null);
+  const lines = (col) => (p, n) => (n[1] > 0.9 && (Math.floor(p[2] / 2.5) & 1) ? sh(col, 0.86) : null);
+  shapes.push(box(x0 + 8, y0 + 8, 0, x1 - 8, y1 - 8, cell * 0.12, { col: [70, 74, 72], pat: checker }));     // the bed
+  for (const x of [x0, x1 - t]) for (const y of [y0, y1 - t]) shapes.push(box(x, y, 0, x + t, y + t, H, { col: frame }));   // posts
+  shapes.push(box(cx - t / 2, y0, 0, cx + t / 2, y0 + t, H, { col: frame }));                                 // a middle post at the back
+  for (const x of [x0, x1 - t]) shapes.push(box(x, y0, H - t, x + t, y1, H, { col: frame }));                // side rails
+  for (const y of [y0, y1 - t]) shapes.push(box(x0, y, H - t, x1, y + t, H, { col: frame }));                // end rails
+  const by = cy - cell * 0.12, hx = cx - cell * 0.18;
+  for (const s of [-1, 1]) shapes.push(box(x0, by + s * cell * 0.13 - t * 0.6, H - t * 1.7, x1, by + s * cell * 0.13 + t * 0.6, H - t * 0.3, { col: YEL }));
+  shapes.push(box(hx - 26, by - cell * 0.16, H - t * 2.2, hx + 26, by + cell * 0.16, H, { col: [84, 88, 90] }));           // the carriage
+  shapes.push(box(hx - 12, by - 12, H - cell * 0.42, hx + 12, by + 12, H - t * 2.2, { col: DARK }));                      // the head
+  // the part on the bed: a stepped hull section, its top layer still being laid down under the head
+  const part = [150, 140, 120], fresh = [176, 168, 146];
+  shapes.push(box(cx - cell * 0.8, cy - cell * 0.4, cell * 0.12, cx + cell * 0.4, cy + cell * 0.32, cell * 0.24, { col: sh(part, 0.9), pat: lines(sh(part, 0.9)) }));
+  shapes.push(box(cx - cell * 0.62, cy - cell * 0.34, cell * 0.24, cx + cell * 0.14, cy + cell * 0.16, cell * 0.36, { col: part, pat: lines(part) }));
+  shapes.push(box(cx - cell * 0.42, cy - cell * 0.28, cell * 0.36, cx - cell * 0.02, cy - cell * 0.02, cell * 0.42, { col: fresh, pat: lines(fresh) }));
+  // the feedstock hopper standing in the north-east corner, and the control desk in the south-east one
+  const hop = [cx + cell * 0.6, y0 + t + 4, cx + cell * 1.04, y0 + cell * 0.42, cell * 0.62];
+  shapes.push(box(hop[0], hop[1], 0, hop[2], hop[3], hop[4], { col: [64, 90, 128], pat: (p, n) => (n[1] > 0.9 && Math.abs(p[2] - cell * 0.5) < 4 ? YEL : null) }));
+  const dx0 = cx + cell * 0.6, dx1 = cx + cell * 1.02, dy0 = y1 - cell * 0.34, dy1 = y1 - cell * 0.1;
+  shapes.push(wedge(dx0, dy0, dx1, dy1, cell * 0.36, cell * 0.28, cell * 0.12, { col: DARK }));
+  let out = render(lay, shapes, 0.4);
+  const d = new Draw(out);
+  // the hose from the hopper's top up and over to the carriage
+  const hose = [];
+  for (let i = 0; i <= 16; i++) {
+    const f = i / 16, x = lerp((hop[0] + hop[2]) / 2, hx + 26, f), y = lerp((hop[1] + hop[3]) / 2, by, f), z = lerp(hop[4], H - 6, f) + Math.sin(f * Math.PI) * cell * 0.1;
+    hose.push(S(x, y, z));
+  }
+  d.line(hose.map(([x, y]) => [x + 2, y + 3]), A([10, 10, 10], 120), 7);
+  d.line(hose, A([34, 36, 38]), 6);
+  d.line(hose.map(([x, y]) => [x - 1, y - 1]), A([90, 94, 96], 180), 2);
+  // the screen on the desk's sloped top
+  const zAt = (y) => lerp(cell * 0.36, cell * 0.28, (y - dy0) / (dy1 - dy0));
+  const sc = [[dx0 + 8, dy0 + 6], [dx1 - 8, dy0 + 6], [dx1 - 8, dy1 - 8], [dx0 + 8, dy1 - 8]].map(([x, y]) => [x, y, zAt(y) + 1]);
+  quad(d, sc, A([60, 170, 140]));
+  quad(d, sc.map(([x, y, z], i) => [x + (i === 0 || i === 3 ? 4 : -4), y + (i < 2 ? 3 : -3), z]), A([120, 230, 190]));
+  const [nx, ny] = S(hx, by, H - cell * 0.42);
+  d.ellipse([nx - 5, ny - 3, nx + 5, ny + 7], { fill: A([255, 190, 90]) });
+  out = glow(out, cell, (g) => g.ellipse([nx - 14, ny - 8, nx + 14, ny + 18], { fill: 255 }), [255, 170, 80], 0.6, 0.09);
+  out = glow(out, cell, (g) => g.polygon(sc.map((q) => S(...q)), 150), [110, 230, 180], 0.45, 0.08);
+  stencil(new Draw(out), "PRINTER 1", cx - cell * 0.4, y1 - 8, cell * 0.06, cell * 0.09, [214, 210, 196], 220);
+  return finish(out, cell, 2265, 0.06);
+}
+
 // a steel workbench: a thick top on legs, a vice, parts and a tool tray, a shelf below
 function tokenWorkbench(cell) {
   const [lay, , cs] = layerFor(cell, row2(cell)), [cx, cyc] = centroid(cs), y = cyc + cell * 0.08;
@@ -483,6 +538,7 @@ export const TOKENS = {
   sd_manifold: tokenManifold,
   sd_reactor_size3: tokenReactor,
   sd_printer_size2: tokenPrinter,
+  sd_printer_size3: tokenPrinter3,
   sd_feedstock_drums: (c) => tokenDrums(c, 1, [178, 182, 172]),
   sd_workbench_2hex: tokenWorkbench,
   sd_rack_2hex: tokenRack,

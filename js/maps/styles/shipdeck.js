@@ -13,11 +13,11 @@
 //
 // Every layer has its own random stream, so a slider changes only its own layer.
 
-import { PyRandom } from "../../rng.js?v=8110e80930";
-import { newImage, Draw, alphaComposite, u8 } from "../../raster.js?v=8110e80930";
-import { centre, geometry, imageSize, hexesBox, connectedParts } from "../geometry.js?v=8110e80930";
-import { ZONE_SETTINGS, withDefaults, keeper, extras, drawAllZones, decalHazardRing, decalBlast, decalTracks, maskOf } from "../common.js?v=8110e80930";
-import { vnoise, grain, blurL, addLight, darken } from "./jungle.js?v=8110e80930";
+import { PyRandom } from "../../rng.js?v=666bbb997f";
+import { newImage, Draw, alphaComposite, u8 } from "../../raster.js?v=666bbb997f";
+import { centre, geometry, imageSize, hexesBox, connectedParts } from "../geometry.js?v=666bbb997f";
+import { ZONE_SETTINGS, withDefaults, keeper, extras, drawAllZones, decalHazardRing, decalBlast, decalTracks, maskOf } from "../common.js?v=666bbb997f";
+import { vnoise, grain, blurL, addLight, darken } from "./jungle.js?v=666bbb997f";
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;

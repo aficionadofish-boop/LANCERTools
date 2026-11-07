@@ -6,13 +6,13 @@
 // is on top at a pixel to colour it. The strange growths come glowing and plain (_plain): the glowing
 // ones mark emissive pixels while painting and get a halo and light spill afterwards.
 
-import { PyRandom } from "../rng.js?v=8110e80930";
-import { newImage, Draw, alphaComposite, gaussianBlur } from "../raster.js?v=8110e80930";
-import { geometry } from "../maps/geometry.js?v=8110e80930";
-import { layerFor, centroid, row2, row3, fine, fill, project } from "./depot.js?v=8110e80930";
-import { withShadow } from "./kit.js?v=8110e80930";
-import { groundShadow } from "./shadow.js?v=8110e80930";
-import { fern, broadLeaf, leafPts, lit, tint } from "../maps/styles/jungle.js?v=8110e80930";
+import { PyRandom } from "../rng.js?v=666bbb997f";
+import { newImage, Draw, alphaComposite, gaussianBlur } from "../raster.js?v=666bbb997f";
+import { geometry } from "../maps/geometry.js?v=666bbb997f";
+import { layerFor, centroid, row2, row3, fine, fill, project } from "./depot.js?v=666bbb997f";
+import { withShadow } from "./kit.js?v=666bbb997f";
+import { groundShadow } from "./shadow.js?v=666bbb997f";
+import { fern, broadLeaf, leafPts, lit, tint } from "../maps/styles/jungle.js?v=666bbb997f";
 
 const T = Math.trunc;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));

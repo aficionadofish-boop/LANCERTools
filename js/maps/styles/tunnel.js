@@ -10,11 +10,11 @@
 //
 // Every layer has its own random stream, so a slider changes only its own layer.
 
-import { NpRandom, PyRandom } from "../../rng.js?v=8110e80930";
-import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=8110e80930";
-import { centre, geometry, imageSize } from "../geometry.js?v=8110e80930";
-import { noise, decalBlast, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=8110e80930";
-import { drawAllZones } from "../common.js?v=8110e80930";
+import { NpRandom, PyRandom } from "../../rng.js?v=666bbb997f";
+import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=666bbb997f";
+import { centre, geometry, imageSize } from "../geometry.js?v=666bbb997f";
+import { noise, decalBlast, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=666bbb997f";
+import { drawAllZones } from "../common.js?v=666bbb997f";
 
 const FLOOR = [52, 54, 58];
 const FLOOR_DARK = [34, 35, 38];

@@ -2,7 +2,7 @@
 
 export class Renderer {
   constructor() {
-    this.worker = new Worker(new URL("../worker.js?v=8110e80930", import.meta.url), { type: "module" });
+    this.worker = new Worker(new URL("../worker.js?v=666bbb997f", import.meta.url), { type: "module" });
     this.pending = new Map();
     this.next = 1;
     this.worker.onmessage = ({ data }) => {

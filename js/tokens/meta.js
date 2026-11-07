@@ -198,6 +198,7 @@ const RULES = [
   [/^sd_manifold$/, "Valve manifold", "Cover", "A header pipe with three risers and red hand wheels."],
   [/^sd_reactor_size3$/, "Reactor vessel", "Objective", "A squat domed vessel on a plinth: flange rings, inspection ports glowing blue, a hazard band round its foot. Size 3."],
   [/^sd_printer_size2$/, "Industrial printer", "Cover", "A printer frame with a yellow carriage across it, the head glowing over a part half built on the bed."],
+  [/^sd_printer_size3$/, "Heavy printer", "Cover", "A big printer frame on a checker-plate bed: a twin-beam gantry, the head glowing over a hull section half built, a feedstock hopper and a control desk. Size 3."],
   [/^sd_feedstock_drums$/, "Feedstock drums", "Cover", "Pale steel drums."],
   [/^sd_workbench_2hex$/, "Workbench", "Cover", "A steel bench with a vice, a red tool tray and parts, a shelf below."],
   [/^sd_rack_2hex$/, "Stores racking", "Cover", "A blue steel rack with yellow shelves of boxes and cases, open to the south."],
