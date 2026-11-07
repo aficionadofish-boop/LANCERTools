@@ -12,6 +12,7 @@ export const SETS = {
   silos: { name: "Ballistic Silos", colour: "#6f86d8" },
   freight: { name: "Freight Tunnel", colour: "#c9a24a" },
   jungle: { name: "Overgrown Jungle", colour: "#5fbf8f" },
+  shipdeck: { name: "Ship Deck", colour: "#c8b07a" },
 };
 
 const RULES = [
@@ -180,11 +181,31 @@ const RULES = [
   [/^fl_harness_anchor_v(\d)$/, "Harness anchor", "Prop", "A welded padeye and shackle on a yellow-and-black base: where a harness clips on. Scatter them about the deck; one, or a pair."],
   [/^fl_harness_locker$/, "Harness locker", "Objective", "A steel locker, door open, harnesses hanging inside: where the harnesses are kept."],
   [/^fl_low_clearance$/, "Low clearance marker", "Marker", "A weighted warning post: a striped pole, a low-clearance sign and an amber beacon. Lay it on the train the round before an overhead obstacle."],
+  [/^sd_crate_v(\d)$/, "Steel crate", "Cover", "A steel cargo crate with ribbed sides and dark corner posts, stencilled with what's inside."],
+  [/^sd_crates_2hex$/, "Crate stack", "Cover", "Two crates side by side, a smaller one stacked on the right."],
+  [/^sd_lockers_2hex$/, "Lockers", "Cover", "A bank of six steel lockers with vents, handles and name plates. Stand it against a bulkhead."],
+  [/^sd_barricade_v(\d)$/, "Barricade", "Cover", "A deployable steel shield leaning back on struts, a hazard band along the top and a firing slit: one, or a pair."],
+  [/^sd_pipe_run_2hex$/, "Pipe run", "Cover", "Three low pipes on two stands across two hexes, a valve wheel on top."],
+  [/^sd_gantry_size2$/, "Maintenance gantry", "Obstruction", "A mech maintenance frame, open to the south: side frames, a striped beam across the back with a hoist. A mech can stand inside it."],
+  [/^sd_tool_chest$/, "Tool chest", "Cover", "A red rolling tool chest with drawers."],
+  [/^sd_ammo_cart_2hex$/, "Munitions cart", "Cover", "A flatbed cart with a tow bar, carrying three missiles with yellow bands."],
+  [/^sd_planter_2hex$/, "Hydroponic planter", "Cover", "A steel trough of leafy crops under a grow light, glowing pink on the floor."],
+  [/^sd_mess_table_2hex$/, "Mess table", "Cover", "A steel table with fixed benches either side, trays and mugs on it."],
+  [/^sd_console_v(\d)$/, "Console", "Cover", "A workstation with a sloped desk, a lit screen and status lamps, glowing on the floor (blue or green)."],
+  [/^sd_console_bank_2hex$/, "Console bank", "Cover", "Three workstations side by side across two hexes."],
+  [/^sd_plot_table_size2$/, "Plotting table", "Cover", "A round table with a glowing chart: rings, a course line and contacts."],
+  [/^sd_coolant_pump_size2$/, "Coolant pump", "Cover", "A motor lying on a skid, the pump casing and blue-lagged pipes leaving it."],
+  [/^sd_manifold$/, "Valve manifold", "Cover", "A header pipe with three risers and red hand wheels."],
+  [/^sd_reactor_size3$/, "Reactor vessel", "Objective", "A squat domed vessel on a plinth: flange rings, inspection ports glowing blue, a hazard band round its foot. Size 3."],
+  [/^sd_printer_size2$/, "Industrial printer", "Cover", "A printer frame with a yellow carriage across it, the head glowing over a part half built on the bed."],
+  [/^sd_feedstock_drums$/, "Feedstock drums", "Cover", "Pale steel drums."],
+  [/^sd_workbench_2hex$/, "Workbench", "Cover", "A steel bench with a vice, a red tool tray and parts, a shelf below."],
+  [/^sd_rack_2hex$/, "Stores racking", "Cover", "A blue steel rack with yellow shelves of boxes and cases, open to the south."],
   [/^fl_locomotive$/, "Locomotive", "Cover", "An electric freight locomotive, nose east: nine hexes long, five rows wide. Radiator fans, hatches, the cab and a striped nose; collector shoes to the conductor rail; its west buffer beam meets the coupling in the gap."],
 ];
 
 export function describe(name) {
-  const set = name.startsWith("mb_") ? "milbay" : name.startsWith("vr_") ? "vr" : name.startsWith("tf_") ? "training" : name.startsWith("dp_") ? "depot" : name.startsWith("ga_") ? "annex" : name.startsWith("bs_") ? "silos" : name.startsWith("fl_") ? "freight" : name.startsWith("jg_") ? "jungle" : "kit";
+  const set = name.startsWith("mb_") ? "milbay" : name.startsWith("vr_") ? "vr" : name.startsWith("tf_") ? "training" : name.startsWith("dp_") ? "depot" : name.startsWith("ga_") ? "annex" : name.startsWith("bs_") ? "silos" : name.startsWith("fl_") ? "freight" : name.startsWith("jg_") ? "jungle" : name.startsWith("sd_") ? "shipdeck" : "kit";
   let title = name, kind = "Prop", notes = "";
   for (const [re, t, k, n] of RULES) {
     const m = name.match(re);

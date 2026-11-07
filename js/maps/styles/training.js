@@ -11,11 +11,11 @@
 //
 // Every layer has its own random stream, so a slider changes only its own layer.
 
-import { NpRandom, PyRandom } from "../../rng.js?v=ee0d9b06b0";
-import { newImage, Draw, alphaComposite, paste, gaussianBlur, u8 } from "../../raster.js?v=ee0d9b06b0";
-import { centre, hexPoints, imageSize, zoneEdges, hexesBox, connectedParts } from "../geometry.js?v=ee0d9b06b0";
-import { noise, maskOf, drawAllZones, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=ee0d9b06b0";
-import { maze, remains } from "../synthetik.js?v=ee0d9b06b0";
+import { NpRandom, PyRandom } from "../../rng.js?v=5b84a09c26";
+import { newImage, Draw, alphaComposite, paste, gaussianBlur, u8 } from "../../raster.js?v=5b84a09c26";
+import { centre, hexPoints, imageSize, zoneEdges, hexesBox, connectedParts } from "../geometry.js?v=5b84a09c26";
+import { noise, maskOf, drawAllZones, decalHazardRing, ZONE_SETTINGS, withDefaults, keeper, extras } from "../common.js?v=5b84a09c26";
+import { maze, remains } from "../synthetik.js?v=5b84a09c26";
 
 const F = Math.fround;
 const GROUND = [216, 106, 57];

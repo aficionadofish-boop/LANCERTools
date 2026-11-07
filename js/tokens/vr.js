@@ -2,11 +2,11 @@
 // columns and lilac sand, intact or shattered), basalt pillars and clusters, boulders, the spawn pads,
 // the flag stand and the flag. Violet and slate, clearly apart from the ship kit.
 
-import { NpRandom, PyRandom } from "../rng.js?v=ee0d9b06b0";
-import { newImage, cloneImage, Draw, alphaCompositeAt, paste, pasteAt, gaussianBlur, u8 } from "../raster.js?v=ee0d9b06b0";
-import { centre, geometry, hexPoints, radians, linspace } from "../maps/geometry.js?v=ee0d9b06b0";
-import { noise, maskOf } from "../maps/common.js?v=ee0d9b06b0";
-import { tokenCanvas, withShadow, size2Footprint } from "./kit.js?v=ee0d9b06b0";
+import { NpRandom, PyRandom } from "../rng.js?v=5b84a09c26";
+import { newImage, cloneImage, Draw, alphaCompositeAt, paste, pasteAt, gaussianBlur, u8 } from "../raster.js?v=5b84a09c26";
+import { centre, geometry, hexPoints, radians, linspace } from "../maps/geometry.js?v=5b84a09c26";
+import { noise, maskOf } from "../maps/common.js?v=5b84a09c26";
+import { tokenCanvas, withShadow, size2Footprint } from "./kit.js?v=5b84a09c26";
 
 const F = Math.fround;
 const T = Math.trunc;

@@ -10,11 +10,11 @@
 //
 // Every layer has its own random stream, so a slider changes only its own layer.
 
-import { PyRandom } from "../../rng.js?v=ee0d9b06b0";
-import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=ee0d9b06b0";
-import { centre, imageSize } from "../geometry.js?v=ee0d9b06b0";
-import { ZONE_SETTINGS, withDefaults, keeper, extras, drawAllZones } from "../common.js?v=ee0d9b06b0";
-import { wallMask } from "./tunnel.js?v=ee0d9b06b0";
+import { PyRandom } from "../../rng.js?v=5b84a09c26";
+import { newImage, Draw, alphaComposite, gaussianBlur, u8 } from "../../raster.js?v=5b84a09c26";
+import { centre, imageSize } from "../geometry.js?v=5b84a09c26";
+import { ZONE_SETTINGS, withDefaults, keeper, extras, drawAllZones } from "../common.js?v=5b84a09c26";
+import { wallMask } from "./tunnel.js?v=5b84a09c26";
 
 const SOIL = [15, 18, 14];
 const MOSS = [30, 42, 25];
@@ -32,7 +32,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 
 // value noise in 0..1: random grids, bilinear with smoothstep, `octaves` halving in size; with a
 // `mask` (an L layer's data) only where it is set
-function vnoise(h, w, scale, seed, octaves = 3, mask = null) {
+export function vnoise(h, w, scale, seed, octaves = 3, mask = null) {
   const out = new Float32Array(w * h), r = new PyRandom(seed);
   let amp = 1, tot = 0;
   for (let o = 0; o < octaves; o++) {
@@ -57,7 +57,7 @@ function vnoise(h, w, scale, seed, octaves = 3, mask = null) {
 }
 
 // per-pixel grain, roughly normal with sd 1, from a hash (no random stream to step)
-function grain(p, seed) {
+export function grain(p, seed) {
   let x = Math.imul(p ^ seed, 0x9e3779b1); x ^= x >>> 15; x = Math.imul(x, 0x85ebca6b); x ^= x >>> 13;
   const a = (x & 0xffff) / 65536, b = (x >>> 16) / 65536;
   return (a + b - 1) * 2.45;
@@ -65,7 +65,7 @@ function grain(p, seed) {
 
 // Gaussian-ish blur of an L layer, only over the part that has anything in it; wide blurs run on a
 // smaller copy and are scaled back up (bilinear), which looks the same on soft light and shadow
-function blurL(im, radius) {
+export function blurL(im, radius) {
   const { w, h, data } = im;
   let x0 = w, y0 = h, x1 = -1, y1 = -1;
   for (let y = 0; y < h; y++) {
@@ -140,7 +140,7 @@ export function leafHalves(x, y, a, len, wid, bulge) {
 }
 
 // add a glow layer (L, already blurred) in a colour, as light adds
-function addLight(img, layer, rgb, k) {
+export function addLight(img, layer, rgb, k) {
   const d = img.data, g = layer.data;
   for (let p = 0; p < g.length; p++) {
     const a = g[p];
@@ -151,7 +151,7 @@ function addLight(img, layer, rgb, k) {
 }
 
 // darken by an L layer (0 = untouched, 255 = by `k`)
-function darken(img, layer, k) {
+export function darken(img, layer, k) {
   const d = img.data, g = layer.data;
   for (let p = 0; p < g.length; p++) {
     if (!g[p]) continue;
